@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - orchestrator
+      - web-frontend
+    networks:
+      - my-net
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    expose:
+      - "5000"
+    networks:
+      - my-net
+
+  web-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    networks:
+      - my-net
+networks:
+  my-net:
+    driver: bridge
