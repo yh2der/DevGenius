@@ -20,7 +20,7 @@ const App: React.FC = () => {
   // 呼叫後端 API，取得處理後的程式碼
   const sendToBackend = async (fileName: string, code: string): Promise<string> => {
     try {
-      const response = await fetch('http://localhost:5000/process-code', {
+      const response = await fetch('/api/process-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName, oldCode: code }),
