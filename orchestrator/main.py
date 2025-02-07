@@ -23,7 +23,7 @@ def modify_python_code(old_code):
     new_code = '\n'.join(code_lines)
 
     # 只回傳有變更的 Python 檔案
-    return new_code if new_code != old_code else None
+    return new_code 
 
 
 @app.route("/")

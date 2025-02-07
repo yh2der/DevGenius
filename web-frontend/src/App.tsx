@@ -45,6 +45,22 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCodeChange = (updatedCode: string) => {
+    if (selectedFile) {
+      setSelectedFile((prevFile) => prevFile ? { ...prevFile, newCode: updatedCode } : null);
+  
+      setFiles((prevFiles) =>
+        prevFiles.map((file) =>
+          file.fileName === selectedFile.fileName
+            ? { ...file, newCode: updatedCode } // 只更新當前檔案
+            : file
+        )
+      );
+    }
+  };
+  
+  
+
   // 處理檔案上傳，讀取內容後呼叫後端，更新 state
   const handleProjectUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -81,7 +97,7 @@ const App: React.FC = () => {
 
   // 當使用者點選左側檔案列表時，更新選取的檔案
   const handleSelectFile = (fileRecord: FileRecord) => {
-    setSelectedFile(fileRecord);
+    setSelectedFile(fileRecord); // 確保 selectedFile 更新為新的檔案
   };
 
   return (
@@ -96,14 +112,16 @@ const App: React.FC = () => {
       <main style={{ flex: 1, padding: '20px' }}>
         {selectedFile ? (
           <CodeDiff
-            fileName={selectedFile.fileName}
-            oldCode={selectedFile.oldCode}
-            newCode={selectedFile.newCode}
-            loading={selectedFile.loading}
-            error={selectedFile.error}
+          fileName={selectedFile?.fileName || ""}
+          oldCode={selectedFile?.oldCode || ""}
+          newCode={selectedFile?.newCode || ""}
+          loading={selectedFile?.loading || false}
+          error={selectedFile?.error || ""}
+          onCodeChange={handleCodeChange} // 確保修改同步到 App.tsx
           />
         ) : (
           <p>請上傳專案並選擇修改過的檔案來查看變更</p>
+
         )}
       </main>
     </div>
