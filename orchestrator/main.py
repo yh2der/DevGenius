@@ -6,66 +6,68 @@ app = Flask(__name__)
 CORS(app)  # 啟用全域 CORS
 
 # 定義一些隨機插入的程式碼
-EXTRA_LINES = {
-    "python": [
-        "# This is an auto-generated comment\n",
-        "print('Processing complete!')\n",
-        "import time\n",
-    ],
-    "javascript": [
-        "// TODO: Optimize this function\n",
-        "console.log('Debugging...');\n",
-        "const timestamp = Date.now();\n",
-    ],
-    "php": [
-        "// This is an auto-generated comment\n",
-        "echo 'Processing complete!';\n",
-        "$timestamp = time();\n",
-    ],
-    "default": [
-        "// This is a generic auto-generated comment\n",
-        "/* Auto-generated change */\n",
-        "printf('New line added');\n",
-    ]
-}
+EXTRA_LINES = [
+    "# This is an auto-generated comment\n",
+    "import time\n",
+]
 
-def get_file_type(file_name):
-    """ 根據檔案名稱判斷程式碼類型 """
-    if file_name.endswith('.py'):
-        return "python"
-    elif file_name.endswith('.js') or file_name.endswith('.ts'):
-        return "javascript"
-    elif file_name.endswith('.php'):
-        return "php"
-    else:
-        return "default"
-
-@app.route('/process-code', methods=['POST'])
-def process_code():
-    data = request.json
-    file_name = data.get('fileName', 'unknown_file')
-    old_code = data.get('oldCode', '')
-
-    if not old_code:
-        return jsonify({'error': 'No code provided'}), 400
-
-    # 根據檔案類型選擇插入的程式碼
-    file_type = get_file_type(file_name)
-    extra_lines = EXTRA_LINES.get(file_type, EXTRA_LINES["default"])
-
-    # 將原始程式碼分行
+def modify_python_code(old_code):
+    """ 隨機插入 1~3 行新的 Python 程式碼 """
     code_lines = old_code.split('\n')
 
-    # 隨機插入 1~3 行新的程式碼
-    num_insertions = random.randint(1, 3)
+    num_insertions = random.randint(0, 2)
     for _ in range(num_insertions):
         insert_pos = random.randint(0, len(code_lines))  # 隨機插入點
-        code_lines.insert(insert_pos, random.choice(extra_lines))
+        code_lines.insert(insert_pos, random.choice(EXTRA_LINES))
 
-    # 產生新的程式碼
     new_code = '\n'.join(code_lines)
 
-    return jsonify({'newCode': new_code})
+    # 只回傳有變更的 Python 檔案
+    return new_code if new_code != old_code else None
+
+
+@app.route("/")
+def home():
+    return "Flask API is running!"
+
+@app.route("/health")
+def health():
+    return "OK", 200  # ✅ healthcheck 會用到這個
+
+
+# 將舊code送給後端的地方
+@app.route('/process-project', methods=['POST'])
+def process_project():
+    data = request.json
+
+    print("接收到請求:", data)
+
+    files = data.get('files', [])
+
+    if not files:
+        return jsonify({'error': 'No files provided'}), 400
+
+    updated_files = []
+    for file in files:
+        file_name = file.get('fileName', 'unknown_file')
+
+        # 只處理 Python 檔案
+        if not file_name.endswith('.py'):
+            continue
+
+        old_code = file.get('oldCode', '')
+
+        if not old_code:
+            continue
+
+        modified_code = modify_python_code(old_code)
+        if modified_code:
+            updated_files.append({
+                'fileName': file_name,
+                'newCode': modified_code
+            })
+
+    return jsonify({'files': updated_files})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

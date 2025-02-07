@@ -18,82 +18,65 @@ const App: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
 
   // 呼叫後端 API，取得處理後的程式碼
-  const sendToBackend = async (fileName: string, code: string): Promise<string> => {
+  const sendProjectToBackend = async (projectFiles: FileRecord[]) => {
     try {
-      const response = await fetch('/api/process-code', {
+      const response = await fetch('/api/process-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName, oldCode: code }),
+        body: JSON.stringify({ files: projectFiles }),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  
       const data = await response.json();
       console.log('後端回傳資料:', data);
-      return data.newCode;
+  
+      // 更新有變更的檔案
+      setFiles((prevFiles) =>
+        prevFiles.map((f) => {
+          const updatedFile = data.files.find((uf: FileRecord) => uf.fileName === f.fileName);
+          return updatedFile
+            ? { ...f, newCode: updatedFile.newCode, loading: false }
+            : { ...f, loading: false };
+        })
+      );
     } catch (error) {
       console.error('後端請求失敗', error);
-      throw error;
     }
   };
 
   // 處理檔案上傳，讀取內容後呼叫後端，更新 state
-  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleProjectUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+  if (!files) return;
 
+  const projectFiles: FileRecord[] = [];
+  const fileReaders: Promise<void>[] = [];
+
+  for (const file of files) {
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const content = e.target?.result as string;
-      // 新增一筆記錄，初始 loading 為 true
-      const newFileRecord: FileRecord = {
-        fileName: file.name,
-        oldCode: content,
-        newCode: '',
-        loading: true,
-        error: '',
+    const promise = new Promise<void>((resolve) => {
+      reader.onload = async (e) => {
+        const content = e.target?.result as string;
+        projectFiles.push({
+          fileName: file.webkitRelativePath, // 保留目錄結構
+          oldCode: content,
+          newCode: '',
+          loading: true,
+          error: '',
+        });
+        resolve();
       };
-      // 將新記錄加入 state
-      setFiles((prevFiles) => [...prevFiles, newFileRecord]);
-      // 同時設為選取的檔案
-      setSelectedFile(newFileRecord);
-
-      try {
-        const processedCode = await sendToBackend(file.name, content);
-        // 更新 state：將對應檔案的 newCode 與 loading 狀態更新
-        setFiles((prevFiles) =>
-          prevFiles.map((f) =>
-            f.fileName === file.name && f.oldCode === content
-              ? { ...f, newCode: processedCode, loading: false }
-              : f
-          )
-        );
-        // 如果當前選取的檔案就是這筆，更新它
-        setSelectedFile((prev) =>
-          prev && prev.fileName === file.name && prev.oldCode === content
-            ? { ...prev, newCode: processedCode, loading: false }
-            : prev
-        );
-      } catch (error) {
-        // 更新錯誤訊息
-        setFiles((prevFiles) =>
-          prevFiles.map((f) =>
-            f.fileName === file.name && f.oldCode === content
-              ? { ...f, error: '後端請求失敗，請稍後再試', loading: false }
-              : f
-          )
-        );
-        setSelectedFile((prev) =>
-          prev && prev.fileName === file.name && prev.oldCode === content
-            ? { ...prev, error: '後端請求失敗，請稍後再試', loading: false }
-            : prev
-        );
-      }
-    };
-    reader.onerror = () => {
-      console.error('檔案讀取失敗');
-    };
+    });
     reader.readAsText(file);
+    fileReaders.push(promise);
+  }
+
+  // 等所有檔案都讀取完畢後，發送給後端
+  Promise.all(fileReaders).then(() => {
+    setFiles(projectFiles);
+    sendProjectToBackend(projectFiles);
+  });
   };
 
   // 當使用者點選左側檔案列表時，更新選取的檔案
@@ -105,7 +88,7 @@ const App: React.FC = () => {
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* 左側 Sidebar：包含上傳檔案與檔案列表 */}
       <Sidebar>
-        <input type="file" onChange={handleFileUpload} style={{ marginBottom: '10px' }} />
+        <input type="file" onChange={handleProjectUpload} ref={(input) => input && (input.webkitdirectory = true)} />
         <FileList files={files} onSelectFile={handleSelectFile} />
       </Sidebar>
 
@@ -120,7 +103,7 @@ const App: React.FC = () => {
             error={selectedFile.error}
           />
         ) : (
-          <p>請上傳檔案並從左側選擇檔案來查看比對結果</p>
+          <p>請上傳專案並選擇修改過的檔案來查看變更</p>
         )}
       </main>
     </div>

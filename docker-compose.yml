@@ -1,36 +1,6 @@
+version: '3.8'
+
 services:
-  gateway:
-    build:
-      context: ./gateway
-      dockerfile: Dockerfile
-    volumes:
-      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      - "8080:80"
-    depends_on:
-      - orchestrator
-      - web-frontend
-    networks:
-      - my-net
-
-  orchestrator:
-    build:
-      context: ./orchestrator
-      dockerfile: Dockerfile
-    expose:
-      - "5000"
-    networks:
-      - my-net
-
-  web-frontend:
-    build:
-      context: ./web-frontend
-      dockerfile: Dockerfile
-    expose:
-      - "80"
-    networks:
-      - my-net
-
   nginx:
     image: nginx:latest
     volumes:
@@ -38,10 +8,53 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - orchestrator
-      - web-frontend
+      orchestrator:
+        condition: service_healthy
+      web-frontend:
+        condition: service_healthy
     networks:
       - my-net
+    restart: unless-stopped
+
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    volumes:
+      - ./orchestrator:/app  # Flask 讀取即時程式碼
+    environment:
+      - FLASK_ENV=development
+    expose:
+      - "5000"
+    networks:
+      - my-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+
+  web-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./web-frontend:/app  # React 讀取即時程式碼
+      - /app/node_modules  # 避免 node_modules 影響
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # 讓 React/Vite 監聽變更
+    expose:
+      - "5173:5173"
+    networks:
+      - my-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
 
 networks:
   my-net:
