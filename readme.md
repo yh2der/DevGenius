@@ -91,8 +91,7 @@ uvicorn main:app --reload
 1️⃣ 版本轉換測試
 🔹 Java 8 → Java 21
 請求 JSON
-```
-json
+```json
 {
     "language": "java",
     "operation": "version_conversion",
@@ -106,8 +105,7 @@ json
 2️⃣ 語言轉換測試
 🔹 Java → Python
 請求 JSON
-```
-json
+```json
 {
     "language": "java",
     "operation": "language_conversion",
@@ -119,8 +117,7 @@ json
 3️⃣ 效能優化測試
 🔹 Java 效能優化
 請求 JSON
-```
-json
+```json
 {
     "language": "java",
     "operation": "performance_optimization",
@@ -131,8 +128,7 @@ json
 4️⃣ 編譯錯誤修復
 🔹 Java Scanner 找不到
 請求 JSON
-```
-json
+```json
 {
     "language": "java",
     "operation": "compile_error",
@@ -145,8 +141,7 @@ json
 5️⃣ 運行錯誤修復
 🔹 Java NullPointerException
 請求 JSON
-```
-json
+```json
 {
     "language": "java",
     "operation": "runtime_error",
