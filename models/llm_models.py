@@ -1,7 +1,6 @@
 # models.py
 from pydantic import BaseModel
-from typing import Optional
-from typing import Literal
+from typing import Optional, Literal
 
 class CodeTaskRequest(BaseModel):
     language: Literal["python", "java"]

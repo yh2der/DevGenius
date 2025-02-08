@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from models.llm_models import CodeTaskRequest
+import json
 from services.llm_service import (
     convert_code,
     language_convert,
@@ -14,6 +15,7 @@ router = APIRouter()
 @router.post("/code/operation")
 async def perform_code_operation(request: CodeTaskRequest):
     # print(request)  # 確保 FastAPI 正確解析新的請求
+    # print(json.dumps(request.dict(), indent=4))  # ✅ 確保 `target_version` 存在
     try:
         result = None
         if request.operation == "version_conversion":
@@ -30,7 +32,13 @@ async def perform_code_operation(request: CodeTaskRequest):
                     status_code=400,
                     detail="語言轉換必須提供 target_version（目標語言版本）"
                 )
-            result = language_convert(request.language, request.target_version, request.code)
+            #判斷目標語言
+            target_language = "python" if request.language == "java" else "java"
+
+            # print("now in language_conversion")
+            # print(request.language)
+            # print(request.target_version)
+            result = language_convert(target_language, request.target_version, request.code)
         
         elif request.operation == "performance_optimization":
             result = optimize_code(request.language, request.code)

@@ -1,3 +1,4 @@
+版本轉換測試
 {
     "language": "java",
     "operation": "version_conversion",
@@ -12,4 +13,33 @@
     "code": "public%20class%20A1-3%20%7B%0A%20%20%20%20public%20static%20void%20main%28String%5B%5D%20args%29%20%7B%0A%20%20%20%20%20%20%20%20Thread%20thread%20%3D%20new%20Thread%28%28%29%20-%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20while%20%28true%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20System.out.println%28%22Running...%22%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20Thread.sleep%281000%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%20catch%20%28InterruptedException%20e%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20Thread.currentThread%28%29.interrupt%28%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%29%3B%0A%0A%20%20%20%20%20%20%20%20thread.start%28%29%3B%0A%0A%20%20%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20Thread.sleep%283000%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%2F%2F%20%E5%BC%B7%E5%88%B6%E5%81%9C%E6%AD%A2%E7%B7%9A%E7%A8%8B%0A%20%20%20%20%20%20%20%20%20%20%20%20thread.stop%28%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20System.out.println%28%22Thread%20stopped%22%29%3B%0A%20%20%20%20%20%20%20%20%7D%20catch%20%28InterruptedException%20e%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20e.printStackTrace%28%29%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%7D%0A",
     "source_version": "Java 8",
     "target_version": "Java 17"
+}
+語言轉換測試
+{
+    "language": "java",
+    "operation": "language_conversion",
+    "target_version": "3.11",
+    "code": "import java.util.Scanner;\n\npublic class FactorialCalculator {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        System.out.print(\"Enter a number to calculate its factorial: \");\n        \n        if (!scanner.hasNextInt()) {\n            System.out.println(\"Invalid input. Please enter an integer.\");\n            return;\n        }\n\n        int number = scanner.nextInt();\n        if (number < 0) {\n            System.out.println(\"Factorial is not defined for negative numbers.\");\n        } else {\n            int result = factorial(number);\n            System.out.println(\"Factorial of \" + number + \" is \" + result);\n        }\n    }\n\n    public static int factorial(int n) {\n        if (n == 0) {\n            return 1;\n        }\n        return n * factorial(n - 1);\n    }\n}"
+}
+
+效能優化測試
+{
+    "language": "java",
+    "operation": "performance_optimization",
+    "code": "public class A3_1 {\n    public static void main(String[] args) {\n        String result = \"\";\n        for (int i = 0; i < 10000; i++) {\n            result += \"test\"; // 低效\n        }\n        System.out.println(\"Final string length: \" + result.length());\n    }\n}"
+}
+編譯錯誤
+{
+    "language": "java",
+    "operation": "compile_error",
+    "code": "public class B1_1 {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in); // 錯誤：找不到符號 Scanner\n        System.out.println(\"Enter a number:\");\n        int number = scanner.nextInt();\n        System.out.println(\"You entered: \" + number);\n    }\n}",
+    "error_message": "error: cannot find symbol\n  Scanner scanner = new Scanner(System.in);\n  ^\n  symbol:   class Scanner\n  location: class B1_1"
+}
+
+運行錯誤
+{
+    "language": "java",
+    "operation": "runtime_error",
+    "code": "public class B2_1 {\n    public static void main(String[] args) {\n        String str = null;\n        System.out.println(\"Length of string: \" + str.length()); // 錯誤：NullPointerException\n    }\n}",
+    "error_message": "Exception in thread \"main\" java.lang.NullPointerException: Cannot invoke \"String.length()\" because \"str\" is null\n    at B2_1.main(B2_1.java:4)"
 }
