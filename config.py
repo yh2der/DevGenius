@@ -7,5 +7,6 @@ load_dotenv()
 # 取得 OpenAI API Key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+
 if not OPENAI_API_KEY:
     raise ValueError("❌ OpenAI API Key is missing! Please set it in the .env file.")

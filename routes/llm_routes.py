@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.post("/code/operation")
 async def perform_code_operation(request: CodeTaskRequest):
+    # print(request)  # 確保 FastAPI 正確解析新的請求
     try:
         result = None
         if request.operation == "version_conversion":
@@ -21,7 +22,6 @@ async def perform_code_operation(request: CodeTaskRequest):
                     status_code=400,
                     detail="版本轉換必須提供 source_version 與 target_version"
                 )
-            # 呼叫同步函式，不用 await
             result = convert_code(request.language, request.source_version, request.target_version, request.code)
         
         elif request.operation == "language_conversion":
@@ -54,10 +54,15 @@ async def perform_code_operation(request: CodeTaskRequest):
         else:
             raise HTTPException(status_code=400, detail="不支援的 operation 類型")
         
-        return JSONResponse(
+        # **🔹 加入 Cache-Control 標頭，確保不使用快取**
+        response = JSONResponse(
             content={"result": result, "message": "操作完成成功"},
             media_type="application/json"
         )
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

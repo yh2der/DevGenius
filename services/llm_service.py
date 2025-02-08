@@ -18,6 +18,7 @@ def clean_code(response) -> str:
     """
     從 OpenAI API 回應中提取純程式碼，移除可能的 markdown 格式。
     """
+    # print(response.choices[0].message.content)
     if response and response.choices:
         code = response.choices[0].message.content
         return re.sub(r"```(?:python|java)\n?|```", "", code).strip()
