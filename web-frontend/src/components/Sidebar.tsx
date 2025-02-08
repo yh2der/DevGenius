@@ -5,7 +5,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ children }) => {
-  const [width, setWidth] = useState(200); // 初始寬度
+  const [width, setWidth] = useState(270); // 初始寬度
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const startX = e.clientX;

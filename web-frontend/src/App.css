@@ -1,9 +1,5 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* 移除 #root 的 text-align:center，或改為 left */
+
 
 .logo {
   height: 6em;
@@ -39,4 +35,152 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* 若希望頁面內容靠左顯示，可調整 body 的設定（或移除 flex 屬性） */
+body, #root {
+  display: flex;
+  justify-content: center; /* ✅ **讓主畫面水平置中** */
+  align-items: center; /* ✅ **讓主畫面垂直置中** */
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f9;
+  overflow: hidden;
+}
+
+.main-wrapper {
+  display: flex;
+  width: 95vw; /* 🚀 設定主容器的寬度 */
+  max-width: 3000px; /* 限制最大寬度，避免過度擴展 */
+  height: 100vh; /* 🚀 設定合適的高度 */
+  justify-content: center; /* ✅ **讓內部內容水平置中** */
+  align-items: center; /* ✅ **讓內部內容垂直置中** */
+  background-color: #eaeaea;
+  flex-wrap: nowrap;
+  overflow-x: hidden;
+  padding: 20px;
+  gap: 30px;
+  margin: 0 auto; /* ✅ 🚀 **確保 `main-wrapper` 置中** */
+}
+
+.app-container {
+  display: flex;
+  flex-grow: 1;
+  height: 90vh;
+  max-width: 2400px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.sidebar {
+  width: 400px;
+  min-width: 350px;
+  background: #f0f0f0;
+  padding: 15px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background: white;
+  overflow-y: auto;
+  text-align: left;  /* 主要內容區文字置左 */
+}
+
+.main-content.expanded {
+  flex: 3;
+}
+
+/* 調整建議區塊寬度，讓它顯示更大 */
+.advice-panel {
+  width: 350px;       /* 從 250px 調整到 350px */
+  min-width: 300px;   /* 相應調整最小寬度 */
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ddd;
+}
+
+.advice-panel.compact {
+  width: 200px;
+}
+
+.placeholder-text {
+  color: #888;
+  font-size: 16px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.upload-button {
+  display: block;
+  margin: 10px auto;
+  padding: 8px 16px; /* 增加左右內邊距 */
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto; /* 讓按鈕寬度自適應內容 */
+  max-width: 200px; /* 限制最大寬度 */
+  text-align: center; /* 確保文字置中 */
+}
+
+.upload-button:hover {
+  background-color: #0056b3;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  text-align: center;
+}
+
+.prompt-input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.button-group {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:first-child {
+  background: #28a745;
+  color: white;
+}
+
+button:last-child {
+  background: #dc3545;
+  color: white;
 }
