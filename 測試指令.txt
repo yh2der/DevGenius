@@ -1,0 +1,7 @@
+{
+    "language": "java",
+    "operation": "version_conversion",
+    "code": "import%20javax.security.cert.X509Certificate%3B%0A%0Apublic%20class%20A1_1%20%7B%0A%20%20%20%20public%20static%20void%20main%28String%5B%5D%20args%29%20%7B%0A%20%20%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20X509Certificate%20cert%20%3D%20X509Certificate.getInstance%28new%20byte%5B0%5D%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20System.out.println%28%22Certificate%3A%20%22%20%2B%20cert%29%3B%0A%20%20%20%20%20%20%20%20%7D%20catch%20%28Exception%20e%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20e.printStackTrace%28%29%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%7D%0A",
+    "source_version": "Java 8",
+    "target_version": "Java 21"
+}
