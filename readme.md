@@ -89,15 +89,16 @@ python -m uvicorn main:app --reload
 請根據需求構造 JSON 請求，API 會根據操作返回相應處理結果（僅回傳純程式碼，不含額外說明）。
 
 1️⃣ 版本轉換測試
-🔹 Java 8 → Java 21
+🔹 python 2.7 → python 3.11
 ```json
 {
-    "language": "java",
+    "language": "python",
     "operation": "version_conversion",
-    "code": "import javax.security.cert.X509Certificate;\n\npublic class A1_1 {\n    public static void main(String[] args) {\n        try {\n            X509Certificate cert = X509Certificate.getInstance(new byte[0]);\n            System.out.println(\"Certificate: \" + cert);\n        } catch (Exception e) {\n            e.printStackTrace();\n        }\n    }\n}",
-    "source_version": "Java 8",
-    "target_version": "Java 21"
+    "source_version": "2.7",
+    "target_version": "3.11",
+    "code": "def greet(name):\n    print(f\"Hello, {name}!\")  # 錯誤：舊版本不支援 f-string\n\ngreet(\"Alice\")"
 }
+
 
 ```
 
