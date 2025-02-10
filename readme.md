@@ -127,7 +127,7 @@ python -m uvicorn main:app --reload
 ```json
 {
     "language": "java",
-    "operation": "compile_error",
+    "operation": "fix_error",
     "code": "public class B1_1 {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in); // 錯誤：找不到符號 Scanner\n        System.out.println(\"Enter a number:\");\n        int number = scanner.nextInt();\n        System.out.println(\"You entered: \" + number);\n    }\n}",
     "error_message": "error: cannot find symbol\n  Scanner scanner = new Scanner(System.in);\n  ^\n  symbol:   class Scanner\n  location: class B1_1"
 }
@@ -139,7 +139,7 @@ python -m uvicorn main:app --reload
 ```json
 {
     "language": "java",
-    "operation": "runtime_error",
+    "operation": "fix_error",
     "code": "public class B2_1 {\n    public static void main(String[] args) {\n        String str = null;\n        System.out.println(\"Length of string: \" + str.length()); // 錯誤：NullPointerException\n    }\n}",
     "error_message": "Exception in thread \"main\" java.lang.NullPointerException: Cannot invoke \"String.length()\" because \"str\" is null\n    at B2_1.main(B2_1.java:4)"
 }
