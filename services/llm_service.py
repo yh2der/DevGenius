@@ -122,3 +122,32 @@ def fix_runtime_error(language: str, code: str, error_message: str, model: str =
     )
     
     return clean_code(response)
+
+
+def generate_unit_test(language: str, code: str, model: str = DEFAULT_MODEL) -> str:
+    """
+    根據程式碼自動產生對應的單元測試
+    """
+    prompt = f"""{HIGH_QUALITY_PROMPT}請為以下 {language} 程式碼生成完整的單元測試：
+    
+    ```{language}
+    {code}
+    ```
+
+    ✅ 要求：
+    - 測試程式碼 **必須包含原始類別**，確保可以直接執行
+    - 使用標準 {language} 測試框架（Python 使用 `unittest`，Java 使用 `JUnit`）
+    - 覆蓋各種可能的測試情境
+    - 只輸出測試程式碼，不要其他解釋
+    """
+    system_message = f"你是一個專業的 {language} 單元測試專家，請產生完整可執行的測試代碼。"
+
+    response = client.chat.completions.create(
+        model=model,  
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
+    return clean_code(response)

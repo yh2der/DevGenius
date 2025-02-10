@@ -15,3 +15,7 @@ class CodeTaskRequest(BaseModel):
     source_version: Optional[str] = None  # 版本轉換時的來源版本
     target_version: Optional[str] = None  # 版本轉換或語言轉換時的目標版本
     error_message: Optional[str] = None   # 錯誤修正時需要的錯誤訊息
+    
+class CodeUnitTestRequest(BaseModel):
+    language: Literal["python", "java"]
+    code: str  # 需要產生測試的程式碼

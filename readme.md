@@ -68,7 +68,7 @@ OPENAI_API_KEY = "your_openai_api_key_here"
 
 使用 uvicorn 啟動：
 ```bash
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
 預設伺服器會在 [http://127.0.0.1:8000](http://127.0.0.1:8000) 運行。
@@ -142,5 +142,13 @@ uvicorn main:app --reload
     "operation": "runtime_error",
     "code": "public class B2_1 {\n    public static void main(String[] args) {\n        String str = null;\n        System.out.println(\"Length of string: \" + str.length()); // 錯誤：NullPointerException\n    }\n}",
     "error_message": "Exception in thread \"main\" java.lang.NullPointerException: Cannot invoke \"String.length()\" because \"str\" is null\n    at B2_1.main(B2_1.java:4)"
+}
+```
+
+###`POST /llm/code/unit_test`
+```json
+{
+  "language": "python",
+  "code": "class Calculator:\n    def add(self, a, b):\n        return a + b"
 }
 ```
