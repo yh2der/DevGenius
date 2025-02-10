@@ -1,3 +1,4 @@
+# Prompt: 123456
 ##====================================
 ##題目說明：Dictionary Comprehension 的排序保證 (Python 3.7+ 支援)
 ##問題：使用 typing 模組進行類型註解，該模組在 Python 3.7 之前不存在。

@@ -3,7 +3,6 @@ import Sidebar from './components/Sidebar';
 import CodeDiff from './components/CodeDiff';
 import FileList from './components/FileList';
 import './App.css';
-import { useEffect } from 'react';
 
 
 
@@ -24,94 +23,17 @@ const App: React.FC = () => {
   // 新增 advice 狀態
   const [advice, setAdvice] = useState<string>('');
 
-  const [prompt, setPrompt] = useState<string>(""); // 🆕 存儲 Prompt
-  const [showPromptModal, setShowPromptModal] = useState(false); // 🆕 是否顯示 Prompt 對話框
-  const [isProcessing, setIsProcessing] = useState(false); // 🆕 是否處理中
-
-
-
+  // 測試專案的狀態
   const [testResult, setTestResult] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
-  // ✅ 監聽 isProcessing 狀態，確保變化時輸出到 Console
-  useEffect(() => {
-    console.log("🔄 isProcessing 狀態變更:", isProcessing);
-  }, [isProcessing]);
-
-  // ✅ 監聽 files 變化，確保更新 UI
-  useEffect(() => {
-    console.log("📂 files 更新:", files);
-  }, [files]);
-
-  // ✅ 監聽 selectedFile 變化，確保選擇的檔案更新
-  useEffect(() => {
-    console.log("📂 selectedFile 更新:", selectedFile);
-  }, [selectedFile]);
-  useEffect(() => {
-    console.log("🔄 強制更新 UI: isProcessing =", isProcessing);
-    setShowPromptModal(prev => !prev);  // 強制變更狀態觸發 UI 更新
-    setTimeout(() => setShowPromptModal(prev => !prev), 50);  // 確保 UI Re-render
-  }, [isProcessing]);
+  
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);  // 是否顯示 Prompt 視窗
+  const [userPrompt, setUserPrompt] = useState("");  // 存儲使用者輸入的 Prompt
+  const [selectedCategory, setSelectedCategory] = useState("版本轉換");  // 預設選項
+  const [pendingFiles, setPendingFiles] = useState<FileRecord[]>([]); // 暫存上傳的檔案
 
 
-  // 🆕 當 prompt 送出時，發送 project 到後端
-  const sendProjectWithPrompt = async () => {
-    setIsProcessing(true);
-    console.log("🚀 送出請求:", { files, prompt });
-    
-    try {
-      const response = await fetch('/api/process-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files, prompt }),
-      });
-  
-      console.log("📩 後端回應 status:", response.status); 
-  
-      if (!response.ok) {
-        console.error("❌ 後端回應錯誤:", response.status);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-  
-      const result = await response.json();
-      console.log("📩 後端回應:", result);
-  
-      if (!result.files || result.files.length === 0) {
-        console.warn("❌ 後端回應沒有更新的檔案");
-        throw new Error("No updated files returned from backend");
-      }
-  
-      // 🔹 確保狀態更新
-      setFiles(prevFiles =>
-        prevFiles.map(file => {
-          const updatedFile = result.files.find((f: FileRecord) => f.fileName === file.fileName);
-          return updatedFile ? { ...file, newCode: updatedFile.newCode, advice: updatedFile.advice } : file;
-        })
-      );
-  
-      if (selectedFile) {
-        const updatedSelectedFile = result.files.find((f: FileRecord) => f.fileName === selectedFile.fileName);
-        if (updatedSelectedFile) {
-          setSelectedFile(prevFile =>
-            prevFile ? { ...prevFile, newCode: updatedSelectedFile.newCode, advice: updatedSelectedFile.advice } : null
-          );
-        }
-      }
-    } catch (error) {
-      console.error("❌ 發送請求失敗:", error);
-    } finally {
-      console.log("✅ 結束處理，解除 `後端處理中...`");
-      setTimeout(() => {
-        setIsProcessing(false);
-        console.log("🔥 強制更新 isProcessing = false");
-      }, 100); // 🔥 避免 React 異步問題
-      setShowPromptModal(false);
-    }
-  };
-  
-  
-  
-  
-  
+ 
 
 
   const handleTestProject = async () => {
@@ -134,36 +56,42 @@ const App: React.FC = () => {
     }
   };
 
+  const handleConfirmPrompt = (prompt: string) => {
+    if (!prompt.trim()) {
+      alert("請輸入 Prompt！");
+      return;
+    }
+  
+    sendProjectToBackend(pendingFiles, prompt);
+    setIsPromptModalOpen(false); //  確保 API 呼叫後才關閉視窗
+  };
+
   // 呼叫後端 API，取得處理後的程式碼
-  const sendProjectToBackend = async (projectFiles: FileRecord[]) => {
+  const sendProjectToBackend = async (projectFiles: FileRecord[], prompt: string) => {
     try {
       const response = await fetch('/api/process-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: projectFiles }),
+        body: JSON.stringify({ files: projectFiles, prompt}), // 傳送 prompt 和 category
       });
   
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   
       const data = await response.json();
+      console.log("後端回應資料:", data); //  檢查後端回應是否正確
+      if (data.files && data.files.length > 0) {
+        //  確保 `files` 狀態被正確更新，讓 React 重新渲染
+        setFiles(data.files);
   
-      // 更新有變更的檔案
-      setFiles((prevFiles) =>
-        prevFiles.map((f) => {
-          const updatedFile = data.files.find((uf: FileRecord) => uf.fileName === f.fileName);
-          return updatedFile
-            ? { ...f, newCode: updatedFile.newCode, advice: updatedFile.advice, loading: false }
-            : { ...f, loading: false };
-        })
-      );
-      
-      // 確保當前選中的檔案的建議也會更新
-      if (selectedFile) {
-        const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
-        if (updatedSelectedFile) {
-          setSelectedFile({ ...selectedFile, newCode: updatedSelectedFile.newCode, advice: updatedSelectedFile.advice });
-          setAdvice(updatedSelectedFile.advice || ''); // 更新 UI
+        //  如果有選取的檔案，確保它的內容也更新
+        if (selectedFile) {
+          const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
+          if (updatedSelectedFile) {
+            setSelectedFile(updatedSelectedFile);
+          }
         }
+      } else {
+        console.warn("後端沒有回傳新的檔案");
       }
     } catch (error) {
       console.error('後端請求失敗', error);
@@ -190,10 +118,10 @@ const App: React.FC = () => {
   const handleProjectUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
     if (!uploadedFiles) return;
-
+  
     const projectFiles: FileRecord[] = [];
     const fileReaders: Promise<void>[] = [];
-
+  
     for (const file of uploadedFiles) {
       const reader = new FileReader();
       const promise = new Promise<void>((resolve) => {
@@ -212,19 +140,54 @@ const App: React.FC = () => {
       reader.readAsText(file);
       fileReaders.push(promise);
     }
-
-    // 等所有檔案讀取完畢後，不要馬上發送，而是顯示 Prompt 輸入框
+  
     Promise.all(fileReaders).then(() => {
-      setFiles(projectFiles);
-      setShowPromptModal(true); // ✅ 上傳後彈出 Prompt 視窗
+      setPendingFiles(projectFiles); // 先存入暫存狀態
+      setIsPromptModalOpen(true);  // 顯示模態視窗
     });
   };
+  
 
   // 當使用者點選左側檔案列表時，更新選取的檔案
   const handleSelectFile = (fileRecord: FileRecord) => {
     setSelectedFile(fileRecord); // 確保 selectedFile 更新為新的檔案
     setAdvice(fileRecord.advice || '尚無建議'); // 當選擇新檔案時，顯示對應的建議
   };
+
+  const PromptModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: (prompt: string) => void }) => {
+    const [localPrompt, setLocalPrompt] = useState("");
+  
+    if (!isOpen) return null; // 避免不必要的渲染
+  
+    return (
+      <div style={modalStyle}>
+        <div style={modalContentStyle}>
+          <h3>輸入您的 Prompt</h3>
+          <input
+            type="text"
+            placeholder="請輸入您的 Prompt..."
+            value={localPrompt}
+            onChange={(e) => setLocalPrompt(e.target.value)} // ✅ 不會導致視窗重新渲染
+            style={inputStyle}
+          />
+  
+          <div style={modalButtonContainer}>
+            <button onClick={() => onConfirm(localPrompt)} style={confirmButtonStyle}>確認</button>
+            <button onClick={onClose} style={cancelButtonStyle}>取消</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  
+  const modalStyle : React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' };
+  const modalContentStyle : React.CSSProperties = { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '350px', textAlign: 'center' };
+  const inputStyle = { width: '100%', padding: '8px', marginTop: '10px', border: '1px solid #ddd', borderRadius: '5px' };
+  const modalButtonContainer = { marginTop: '10px', display: 'flex', justifyContent: 'space-between' };
+  const confirmButtonStyle = { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
+  const cancelButtonStyle = { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
+
 
 
   return (
@@ -261,28 +224,10 @@ const App: React.FC = () => {
           ) : (
             <p className="placeholder-text">請上傳專案並選擇修改過的檔案來查看變更</p>
           )}
-          {/* 🆕 Prompt Modal */}
-          {showPromptModal && (
-            <div className="modal">
-              <div className="modal-content">
-                <h3>請輸入 Prompt</h3>
-                <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="請輸入 Prompt..."
-                  className="prompt-input"
-                />
-                <div className="button-group">
-                  <button onClick={sendProjectWithPrompt} disabled={isProcessing}>
-                    {isProcessing ? "處理中..." : "送出"}
-                  </button>
-                  <button onClick={() => setShowPromptModal(false)}>取消</button>
-                </div>
-              </div>
-            </div>
-          )}
+          
         </main>
+
+        <PromptModal isOpen={isPromptModalOpen} onClose={() => setIsPromptModalOpen(false)} onConfirm={handleConfirmPrompt} />
   
         <aside className="advice-panel">
           <h3>後端建議</h3>
@@ -318,7 +263,6 @@ const App: React.FC = () => {
         
       </div>
   
-      
     </div>
   );
   

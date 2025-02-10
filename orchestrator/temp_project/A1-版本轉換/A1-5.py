@@ -1,12 +1,9 @@
+# Prompt: 123456
 ##====================================
 ##題目說明：dataclasses 模組 (Python 3.7+ 支援)
-# This is an auto-generated comment
-
 ##問題：使用 dataclasses 模組定義資料類型，但該模組在 Python 3.7 之前不存在。
 ##
 ##題目路經： ./A1_5.py
-import time
-
 ##
 ##答案路經： ./out/A1_5.py
 ##====================================     

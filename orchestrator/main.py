@@ -40,51 +40,32 @@ def health():
 @app.route('/process-project', methods=['POST'])
 def process_project():
     data = request.json
-    print("📩 收到請求:", data, flush=True)
-
     files = data.get('files', [])
-    prompt = data.get('prompt', '')
-
-    if not files:
-        print("❌ 錯誤: 沒有收到 files", flush=True)
-        return jsonify({'error': 'No files provided'}), 400
+    prompt = data.get('prompt', '')  
 
     updated_files = []
     for file in files:
         file_name = file.get('fileName', 'unknown_file')
-        old_code = file.get('oldCode', '')  # ✅ 修正這行，確保取的是 `oldCode`
+        old_code = file.get('oldCode', '')
 
         if not old_code:
-            print(f"⚠️ 跳過 {file_name}，因為 `oldCode` 為空", flush=True)
             continue
 
-        # 🔹 模擬修改程式碼
+        # 🔹 依照類別選擇不同的處理方式
         modified_code = f"# Prompt: {prompt}\n{old_code}"
 
-        advice = f"建議: {file_name} 需要更好的錯誤處理。使用者輸入的 Prompt: {prompt}"
+        advice = f"建議: {file_name} 。\n使用者輸入的 Prompt: {prompt}"
 
         updated_files.append({
             'fileName': file_name,
             'oldCode': old_code,
             'newCode': modified_code,
-            'advice': advice  
+            'advice': advice
         })
 
-    print("🚀 後端回傳:", updated_files, flush=True)  # ✅ 檢查回傳數據
     return jsonify({'files': updated_files})
 
 
-
-
-
-@app.route('/server-stats', methods=['GET'])
-def get_server_stats():
-    stats = {
-        "cpu": "cpu1",
-        "memory": "memory1",
-        "disk": "disk1"
-    }
-    return jsonify(stats)
 
 
 @app.route('/test-project', methods=['POST'])
@@ -95,7 +76,7 @@ def test_project():
 
         project_dir = "temp_project"
         os.makedirs(project_dir, exist_ok=True)
-
+    
         # 將所有程式碼寫入暫存目錄
         for file in files:
             file_path = os.path.join(project_dir, file["fileName"])

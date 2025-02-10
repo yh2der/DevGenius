@@ -74,10 +74,10 @@ const CodeDiff: React.FC<CodeDiffProps> = ({ fileName, oldCode, newCode, loading
             compareMethod={DiffMethod.WORDS}
           />
           <button onClick={handleEditClick} style={buttonStyle}>
-            編輯新程式碼
+            編輯程式碼
           </button>
 
-          {/* 🆕 新增 Prompt 輸入框 */}
+          {/* 🆕 新增 Prompt 輸入框
           <div style={{ marginTop: '15px' }}>
             <input
               type="text"
@@ -93,7 +93,7 @@ const CodeDiff: React.FC<CodeDiffProps> = ({ fileName, oldCode, newCode, loading
             >
               {isProcessing ? '處理中...' : '送出 Prompt'}
             </button>
-          </div>
+          </div> */}
         </>
       )}
 
