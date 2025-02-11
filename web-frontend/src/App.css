@@ -222,3 +222,82 @@ button:last-child {
   background: #dc3545;
   color: white;
 }
+
+/* .spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #3498db;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+.progress-text {
+  font-size: 16px;
+  color: #333;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} */
+
+/* 跑道樣式 */
+/* 直線跑道容器 */
+.straight-track {
+  position: relative;
+  width: 400px;           /* 跑道寬度 */
+  height: 50px;           /* 跑道高度 */
+  background: #f0f0f0;     /* 跑道背景色 */
+  border: 2px solid #ccc; /* 跑道邊框 */
+  border-radius: 25px;    /* 跑道圓角，讓跑道看起來比較圓滑 */
+  margin: 0 auto;         /* 置中 */
+  overflow: hidden;
+}
+
+/* 賽車的樣式 */
+.race-car {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%); /* 使賽車中心對齊 */
+  transition: left 0.5s ease;         /* 平滑移動效果 */
+  font-size: 2rem;                    /* 調整賽車圖示大小 */
+}
+
+/* 進度文字樣式 */
+.progress-info {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}

@@ -3,8 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import Sidebar from './components/Sidebar';
 import CodeDiff from './components/CodeDiff';
 import FileList from './components/FileList';
+import RaceCarLoading from './components/RaceCarLoading';
 import './App.css';
-
 
 
 export interface FileRecord {
@@ -30,6 +30,9 @@ const App: React.FC = () => {
   const [userPrompt, setUserPrompt] = useState("");  // 存儲使用者輸入的 Prompt
   const [selectedCategory, setSelectedCategory] = useState("版本轉換");  // 預設選項
   const [pendingFiles, setPendingFiles] = useState<FileRecord[]>([]); // 暫存上傳的檔案
+
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const handleTestProject = async () => {
     setIsTesting(true);
@@ -206,17 +209,29 @@ const App: React.FC = () => {
   };
   
 
-  const handleConfirmPrompt = (prompt: string) => {
+  const handleConfirmPrompt = async (prompt: string) => {
     if (!prompt.trim()) {
       alert("請輸入 Prompt！");
       return;
     }
     setUserPrompt(prompt); // 先更新狀態
-    //sendProjectToBackend(pendingFiles, prompt);
-    files.forEach(file => {
-      sendFilesToBackend(file, prompt);
-    });
-    setIsPromptModalOpen(false); //  確保 API 呼叫後才關閉視窗
+    setProgress(0); // 重置進度
+    setIsUpdating(true); // 開始更新，顯示 loading spinner
+
+    try {
+      await Promise.all(
+        files.map(async (file) => {
+          await sendFilesToBackend(file, prompt);
+          // 每完成一個檔案，就更新一次進度
+          setProgress((prev) => prev + 1);
+        })
+      );
+    } catch (error) {
+      console.error("更新檔案時發生錯誤：", error);
+    }
+  
+    setIsUpdating(false); // 更新完畢，隱藏 loading spinner
+    setIsPromptModalOpen(false);
   };
 
   //將"1"個檔案送給OpenAI
@@ -410,7 +425,11 @@ const App: React.FC = () => {
  
   return (
     <div className="main-wrapper">
-
+      {isUpdating && (
+        <div className="loading-overlay">
+          <RaceCarLoading progress={progress} total={files.length} />
+        </div>
+      )}
       <div className="title-container">
         <h2>AI 維運懶人包</h2>
       </div>
