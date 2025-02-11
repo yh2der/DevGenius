@@ -261,8 +261,8 @@ def generate_deployment_files(code: str, model: str = DEFAULT_MODEL) -> dict:
     # 使用正則表達式擷取第一個 code block（假定為 Dockerfile）
     pattern = r"```[^\r\n]*\r?\n(.*?)```"
     code_blocks = re.findall(pattern, full_text, flags=re.DOTALL)
-    print(full_text)
-    print(code_blocks)
+    # print(full_text)
+    # print(code_blocks)
     if len(code_blocks) >= 2:
         dockerfile_code = code_blocks[0].strip()
         yaml_code = code_blocks[1].strip()

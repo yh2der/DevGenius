@@ -81,21 +81,21 @@ python main.py   #正式執行
 給語言和程式碼，自動生成unit test
 ```json
 {
-  "code": "class Calculator:\n    def add(self, a, b):\n        return a + b"
+  "code": "your code"
 }
 ```
-### `POST /llm/code//code/unified_operation`
+### `POST /llm/code/unified_operation`
 給語言和程式碼，自動生成unit test
 ```json
 {
-  "prompt": "幫我轉成 python 3 print \"Hello, world!\""
+  "prompt": "your code and prompt"
 }
 ```
-### `POST /llm/code//code/deployment_files`
+### `POST /llm/code/deployment_files`
 給程式碼，自動生成dockerfile和yaml
 ```json
 {
-  "code": "import com.sun.net.httpserver.HttpServer;\nimport com.sun.net.httpserver.HttpHandler;\nimport com.sun.net.httpserver.HttpExchange;\nimport java.io.IOException;\nimport java.io.OutputStream;\nimport java.net.InetSocketAddress;\n\npublic class HelloWorld {\n    public static void main(String[] args) throws IOException {\n        int port = 8080;\n        // 建立 HTTP 伺服器並監聽指定埠口\n        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);\n        server.createContext(\"/\", new MyHandler());\n        server.setExecutor(null); // 採用預設的執行緒池\n        System.out.println(\"Server started at port \" + port);\n        server.start();\n    }\n    \n    // 處理 HTTP 請求並回應 \"hello gke!\"\n    static class MyHandler implements HttpHandler {\n        @Override\n        public void handle(HttpExchange exchange) throws IOException {\n            String response = \"hello gke!\";\n            exchange.sendResponseHeaders(200, response.length());\n            try (OutputStream os = exchange.getResponseBody()) {\n                os.write(response.getBytes());\n            }\n        }\n    }\n}"
+  "code": "prompt"
 }
 ```
 
