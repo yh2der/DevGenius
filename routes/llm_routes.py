@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from models.llm_models import CodeTaskRequest, CodeUnitTestRequest, CodeUnifiedRequest
+from models.llm_models import CodeTaskRequest, CodeUnitTestRequest, CodeUnifiedRequest, CodeDeploymentRequest
 import json
-from services.llm_service import generate_unit_test,unified_service
+from services.llm_service import generate_unit_test,unified_service, generate_deployment_files
 from services.llm_service import (
     convert_code,
     language_convert,
@@ -94,13 +94,33 @@ async def generate_unit_test_api(request: CodeUnitTestRequest):
     產生 Python 或 Java 程式碼的單元測試
     """
     try:
-        if request.language not in ["java", "python"]:
-            raise HTTPException(status_code=400, detail="僅支援 Java 與 Python 的單元測試生成")
-
-        result = generate_unit_test(request.language, request.code)
+        result = generate_unit_test(request.code)
 
         return JSONResponse(
             content={"unit_test": result, "message": "單元測試生成成功"},
+            media_type="application/json"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/code/deployment_files")
+async def generate_deployment_files_api(request: CodeDeploymentRequest):
+    """
+    根據使用者提供的程式碼生成部署文件：
+      - Dockerfile：構建並運行應用的 Docker 配置
+      - Kubernetes YAML：適用於 GKE 部署的配置文件
+
+    根據程式碼自動判斷所使用的語言與版本，
+    部署後僅透過日誌讀取執行結果，不特別指定對外端口。
+    """
+    try:
+        result = generate_deployment_files(request.code)
+        return JSONResponse(
+            content={
+                "dockerfile": result.get("dockerfile", ""),
+                "yaml": result.get("yaml", ""),
+                "message": "部署文件生成成功"
+            },
             media_type="application/json"
         )
     except Exception as e:

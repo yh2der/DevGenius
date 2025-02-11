@@ -198,23 +198,23 @@ def fix_error(language: str, code: str, error_message: str, model: str = DEFAULT
 
 
 
-def generate_unit_test(language: str, code: str, model: str = DEFAULT_MODEL) -> str:
+def generate_unit_test(code: str, model: str = DEFAULT_MODEL) -> str:
     """
     根據程式碼自動產生對應的單元測試
     """
-    prompt = f"""{HIGH_QUALITY_PROMPT}請為以下 {language} 程式碼生成完整的單元測試：
+    prompt = f"""{HIGH_QUALITY_PROMPT}請為以下程式碼生成完整的單元測試：
     
-    ```{language}
+    ```
     {code}
     ```
 
     ✅ 要求：
     - 測試程式碼 **必須包含原始類別**，確保可以直接執行
-    - 使用標準 {language} 測試框架（Python 使用 `unittest`，Java 使用 `JUnit`）
+    - 使用標準 測試框架（Python 使用 `unittest`，Java 使用 `JUnit`）
     - 覆蓋各種可能的測試情境
     - 只輸出測試程式碼，不要其他解釋
     """
-    system_message = f"你是一個專業的 {language} 單元測試專家，請產生完整可執行的測試代碼。"
+    system_message = f"你是一個專業的單元測試專家，請產生完整可執行的測試代碼。"
 
     response = client.chat.completions.create(
         model=model,  
@@ -225,3 +225,52 @@ def generate_unit_test(language: str, code: str, model: str = DEFAULT_MODEL) -> 
     )
     
     return clean_code(response)
+
+def generate_deployment_files(code: str, model: str = DEFAULT_MODEL) -> dict:
+    """
+    根據給定的程式碼自動判斷使用的程式語言與版本，並生成部署所需的 Dockerfile 與 Kubernetes YAML 配置文件，
+    # 以便在 GKE 上部署該應。，且部署後我們只需透過日誌讀取執行結果，
+    因此不特別指定對外端口。
+    
+    回傳一個 dict，包含 "dockerfile" 與 "yaml" 兩個鍵，分別為生成的 Dockerfile 與 Kubernetes YAML 內容。
+    """
+    prompt = f"""{HIGH_QUALITY_PROMPT}
+
+請根據以下程式碼自動判斷所使用的程式語言與版本，並生成一份完整的 Dockerfile 與 Kubernetes YAML 配置文件，用於在 GKE 上部署該應用。要求如下：
+- **第一部分**：生成的 Dockerfile 必須能構建並運行該應用。請根據程式碼內容選擇合適的基礎映像、拷貝程式碼、以及設定正確的啟動指令。
+- **第二部分**：生成的 Kubernetes YAML 文件應包含 Deployment（以及 Service，如有需要），但不需要特別指定對外端口（部署後我們將從日誌中讀取應用執行結果）。請確保生成的 YAML 文件可直接用於 GKE 部署。
+
+請僅輸出純文本格式的 Dockerfile 與 YAML 配置文件，並使用 Markdown code block 分別標示（第一個為 Dockerfile，第二個為 YAML）。
+以下是程式碼：
+{code}
+"""
+
+    system_message = ("你是一個專業的部署工具，請根據用戶提供的程式碼自動判斷語言與版本，並生成適合於 GKE 部署的 Dockerfile "
+                      "以及 Kubernetes YAML 配置文件，除此之外不要回傳任何資訊。")
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
+    full_text = response.choices[0].message.content.strip()
+
+    # 使用正則表達式擷取第一個 code block（假定為 Dockerfile）
+    pattern = r"```[^\r\n]*\r?\n(.*?)```"
+    code_blocks = re.findall(pattern, full_text, flags=re.DOTALL)
+    print(full_text)
+    print(code_blocks)
+    if len(code_blocks) >= 2:
+        dockerfile_code = code_blocks[0].strip()
+        yaml_code = code_blocks[1].strip()
+    else:
+        dockerfile_code = code_blocks[0].strip() if code_blocks else "無法擷取 Dockerfile"
+        yaml_code = "無法擷取 YAML"
+        
+    return {
+        "dockerfile": dockerfile_code,
+        "yaml": yaml_code
+    }
