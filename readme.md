@@ -71,7 +71,7 @@ OPENAI_API_KEY = "your_openai_api_key_here"
 python -m uvicorn main:app --reload   #測試
 ```
 ```bash
-python -m  main   #測試正式執行
+python main.py   #正式執行
 ```
 預設伺服器會在 [http://127.0.0.1:8000](http://127.0.0.1:8000) 運行。
 
