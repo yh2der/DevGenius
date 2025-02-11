@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent } from 'react';
+import ReactMarkdown from 'react-markdown';
 import Sidebar from './components/Sidebar';
 import CodeDiff from './components/CodeDiff';
 import FileList from './components/FileList';
@@ -32,10 +33,6 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("版本轉換");  // 預設選項
   const [pendingFiles, setPendingFiles] = useState<FileRecord[]>([]); // 暫存上傳的檔案
 
-
- 
-
-
   const handleTestProject = async () => {
     setIsTesting(true);
     setTestResult(null);
@@ -61,42 +58,109 @@ const App: React.FC = () => {
       alert("請輸入 Prompt！");
       return;
     }
-  
-    sendProjectToBackend(pendingFiles, prompt);
+    
+    setUserPrompt(prompt); // 先更新狀態
+
+    //sendProjectToBackend(pendingFiles, prompt);
+    sendFilesToBackend(prompt);
     setIsPromptModalOpen(false); //  確保 API 呼叫後才關閉視窗
   };
 
-  // 呼叫後端 API，取得處理後的程式碼
-  const sendProjectToBackend = async (projectFiles: FileRecord[], prompt: string) => {
+  const sendFilesToBackend = async (prompt: string) => {
+    const filesToSendString = files.map(file => 
+      `### User Prompt:\n${prompt}\n\n### File: ${file.fileName}\n\n${file.oldCode}`
+    ).join("\n\n---\n\n");
+  
+    const requestData = JSON.stringify({
+      prompt: filesToSendString
+    });
+  
+    console.log("🔹 送出的 requestData:", requestData);
+  
     try {
-      const response = await fetch('/api/process-project', {
+      const response = await fetch('http://140.120.14.104:12345/llm/code/unified_operation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: projectFiles, prompt}), // 傳送 prompt 和 category
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: requestData,
       });
   
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`HTTP Error! Status: ${response.status}, Details: ${errorText}`);
+        throw new Error(`HTTP Error! Status: ${response.status}`);
+      }
   
-      const data = await response.json();
-      console.log("後端回應資料:", data); //  檢查後端回應是否正確
-      if (data.files && data.files.length > 0) {
-        //  確保 `files` 狀態被正確更新，讓 React 重新渲染
-        setFiles(data.files);
+      const result = await response.json();
+      console.log("後端回應結果:", result);
   
-        //  如果有選取的檔案，確保它的內容也更新
-        if (selectedFile) {
-          const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
-          if (updatedSelectedFile) {
-            setSelectedFile(updatedSelectedFile);
-          }
-        }
-      } else {
-        console.warn("後端沒有回傳新的檔案");
+      if (result.result) {
+        console.log("result.result.converted_code:", result.result.converted_code);
+        console.log("result.result.suggestions:", result.result.suggestions);
+        
+        setFiles(prevFiles => {
+          console.log("🔍 result.result.fileName:", result.result.fileName);
+          console.log("🔍 prevFiles:", prevFiles.map(file => file.fileName));
+          const updatedFiles = prevFiles.map(file => {
+            // if (file.fileName.includes(result.result.fileName)) {
+              return {
+                ...file,
+                newCode: result.result.converted_code || file.oldCode, // 如果 newCode 是空的，就保持 oldCode
+                advice: result.result.suggestions,
+                loading: false
+              };
+            // }
+            return file;
+          });
+  
+          console.log("🆕 更新後的 updatedFiles:", updatedFiles);
+  
+          return [...updatedFiles];
+        });
+  
+        // 確保 `selectedFile` 也更新
+        setSelectedFile(prevFile => {
+          if (!prevFile) return null;
+          const updatedFile = files.find(f => f.fileName === result.result.fileName);
+          return updatedFile ? { ...prevFile, newCode: updatedFile.newCode, advice: updatedFile.advice } : prevFile;
+        });
       }
     } catch (error) {
-      console.error('後端請求失敗', error);
+      console.error("🚨 傳送檔案至後端失敗:", error);
     }
   };
+
+
+  // // 呼叫後端 API，取得處理後的程式碼
+  // const sendProjectToBackend = async (projectFiles: FileRecord[], prompt: string) => {
+  //   try {
+  //     const response = await fetch('/api/process-project', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ files: projectFiles, prompt}), // 傳送 prompt 和 category
+  //     });
+  
+  //     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  
+  //     const data = await response.json();
+  //     console.log("後端回應資料:", data); //  檢查後端回應是否正確
+  //     if (data.files && data.files.length > 0) {
+  //       //  確保 `files` 狀態被正確更新，讓 React 重新渲染
+  //       setFiles(data.files);
+  
+  //       //  如果有選取的檔案，確保它的內容也更新
+  //       if (selectedFile) {
+  //         const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
+  //         if (updatedSelectedFile) {
+  //           setSelectedFile(updatedSelectedFile);
+  //         }
+  //       }
+  //     } else {
+  //       console.warn("後端沒有回傳新的檔案");
+  //     }
+  //   } catch (error) {
+  //     console.error('後端請求失敗', error);
+  //   }
+  // };
 
   const handleCodeChange = (updatedCode: string) => {
     if (selectedFile) {
@@ -142,6 +206,8 @@ const App: React.FC = () => {
     }
   
     Promise.all(fileReaders).then(() => {
+      console.log("🔹 上傳的檔案:", projectFiles);
+      setFiles(projectFiles); // 更新狀態
       setPendingFiles(projectFiles); // 先存入暫存狀態
       setIsPromptModalOpen(true);  // 顯示模態視窗
     });
@@ -192,6 +258,10 @@ const App: React.FC = () => {
 
   return (
     <div className="main-wrapper">
+
+      <div className="title-container">
+        <h2>AI 維運懶人包</h2>
+      </div>
       <div className="app-container">
         <Sidebar>
           <input type="file" className="upload-button" onChange={handleProjectUpload} ref={(input) => input && (input.webkitdirectory = true)} />
@@ -231,7 +301,11 @@ const App: React.FC = () => {
   
         <aside className="advice-panel">
           <h3>後端建議</h3>
-          <p>{selectedFile?.advice || '尚無建議'}</p>
+          {selectedFile?.advice ? (
+            <ReactMarkdown>{selectedFile.advice}</ReactMarkdown> // ✅ 以 Markdown 顯示
+          ) : (
+            <p>尚無建議</p>
+          )}
           <button
             onClick={handleTestProject}
             style={{

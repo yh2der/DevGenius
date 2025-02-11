@@ -19,10 +19,9 @@ const CodeDiff: React.FC<CodeDiffProps> = ({ fileName, oldCode, newCode, loading
 
 
   useEffect(() => {
-    if (newCode) {
-      setEditableCode(newCode);
-    }
-  }, [newCode]);
+    setEditableCode(newCode);
+  }, [newCode, fileName]);
+  
 
   const handleEditClick = () => {
     setIsEditing(true);

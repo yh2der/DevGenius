@@ -50,6 +50,20 @@ body, #root {
   overflow: hidden;
 }
 
+
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  background-color: #007bff; /* 可依需求調整背景色 */
+  color: white;
+  text-align: center;
+  padding: 15px 10px;
+}
+
 .main-wrapper {
   display: flex;
   width: 95vw; /* 🚀 設定主容器的寬度 */
@@ -65,6 +79,28 @@ body, #root {
   margin: 0 auto; /* ✅ 🚀 **確保 `main-wrapper` 置中** */
 }
 
+
+.footer {
+  background-color: #007bff; /* 可依需求調整背景色 */
+  color: white;
+  text-align: center;
+  padding: 10px;
+}
+
+.title-container{
+  position: fixed; /* 固定在頁面頂部 */
+  top: 0; /* 靠頂部 */
+  left: 150;
+  width: 92vw; /* 撐滿整個頁面 */
+  max-width: 2600px;
+  background: white; /* 確保背景不透明 */
+  z-index: 1000; /* 讓標題在最上層 */
+  padding: 15px 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 加陰影提升可視性 */
+  border-radius: 10px;
+  margin: 0 auto;
+}
+
 .app-container {
   display: flex;
   flex-grow: 1;
@@ -75,6 +111,7 @@ body, #root {
   border-radius: 10px;
   overflow: hidden;
   text-align: left;
+  margin-top: 100px; /* 確保不會被 .title-container 遮擋 */
 }
 
 .sidebar {
@@ -90,6 +127,7 @@ body, #root {
   background: white;
   overflow-y: auto;
   text-align: left;  /* 主要內容區文字置左 */
+  transition: background 0.3s, color 0.3s;
 }
 
 .main-content.expanded {

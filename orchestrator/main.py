@@ -54,7 +54,11 @@ def process_project():
         # 🔹 依照類別選擇不同的處理方式
         modified_code = f"# Prompt: {prompt}\n{old_code}"
 
-        advice = f"建議: {file_name} 。\n使用者輸入的 Prompt: {prompt}"
+        advice = f"**建議:** `{file_name}` 需要更好的錯誤處理。\n\n"
+        advice += f"使用者輸入的 Prompt:\n> {prompt}\n\n"
+        advice += "### 可能的解決方案:\n"
+        advice += "```python\n# 這是範例程式碼\nprint('Hello, world!')\n```"
+
 
         updated_files.append({
             'fileName': file_name,
@@ -76,7 +80,7 @@ def test_project():
 
         project_dir = "temp_project"
         os.makedirs(project_dir, exist_ok=True)
-    
+
         # 將所有程式碼寫入暫存目錄
         for file in files:
             file_path = os.path.join(project_dir, file["fileName"])
