@@ -18,3 +18,7 @@ class CodeTaskRequest(BaseModel):
 class CodeUnitTestRequest(BaseModel):
     language: Literal["python", "java"]
     code: str  # 需要產生測試的程式碼
+
+# 新增統一入口用的 Request 模型，只需傳入一個自然語言的 prompt
+class CodeUnifiedRequest(BaseModel):
+    prompt: str  # 使用者輸入的自然語言描述，內含操作、程式語言、版本資訊及程式碼

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from models.llm_models import CodeTaskRequest, CodeUnitTestRequest
+from models.llm_models import CodeTaskRequest, CodeUnitTestRequest, CodeUnifiedRequest
 import json
-from services.llm_service import generate_unit_test
+from services.llm_service import generate_unit_test,unified_service
 from services.llm_service import (
     convert_code,
     language_convert,
@@ -66,6 +66,28 @@ async def perform_code_operation(request: CodeTaskRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/code/unified_operation")
+async def perform_unified_code_operation(request: CodeUnifiedRequest):
+    try:
+        # 使用 unified_service 處理使用者自然語言指令，統一路由至對應的內部服務
+        result = unified_service(request.prompt)
+        
+        # 確保結果為 dict 格式（包含 converted_code 與 suggestions）
+        if not isinstance(result, dict):
+            result = {"converted_code": result, "suggestions": "無建議"}
+        
+        response = JSONResponse(
+            content={"result": result, "message": "操作完成成功"},
+            media_type="application/json"
+        )
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @router.post("/code/unit_test")
 async def generate_unit_test_api(request: CodeUnitTestRequest):
     """

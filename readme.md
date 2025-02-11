@@ -68,12 +68,30 @@ OPENAI_API_KEY = "your_openai_api_key_here"
 
 使用 uvicorn 啟動：
 ```bash
-python -m uvicorn main:app --reload
+python -m uvicorn main:app --reload   #測試
 ```
-
+```bash
+python -m  main   #測試正式執行
+```
 預設伺服器會在 [http://127.0.0.1:8000](http://127.0.0.1:8000) 運行。
 
 ## API 說明
+
+### `POST /llm/code/unit_test`
+給語言和程式碼，自動生成unit test
+```json
+{
+  "language": "python",
+  "code": "class Calculator:\n    def add(self, a, b):\n        return a + b"
+}
+```
+### `POST /llm/code//code/unified_operation`
+給語言和程式碼，自動生成unit test
+```json
+{
+  "prompt": "幫我轉成 python 3 print \"Hello, world!\""
+}
+```
 
 ### `POST /llm/code/operation`
 統一入口 API，根據請求中的 `operation` 參數執行不同功能：
@@ -146,11 +164,3 @@ python -m uvicorn main:app --reload
 }
 ```
 
-### `POST /llm/code/unit_test`
-給語言和程式碼，自動生成unit test
-```json
-{
-  "language": "python",
-  "code": "class Calculator:\n    def add(self, a, b):\n        return a + b"
-}
-```

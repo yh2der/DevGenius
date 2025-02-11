@@ -1,5 +1,6 @@
 import re
 import openai
+import json
 from config import OPENAI_API_KEY
 
 # 設定 OpenAI API
@@ -102,6 +103,71 @@ def optimize_code(language: str, code: str, model: str = DEFAULT_MODEL) -> str:
     
     return clean_code_add_suggest(response)
 
+# 自然語言解析器：解析使用者輸入的 prompt，轉換成結構化 JSON
+def parse_user_prompt(user_prompt: str, model: str = DEFAULT_MODEL) -> dict:
+    """
+    解析用戶輸入的自然語言，生成包含以下欄位的 JSON：
+      - operation: "convert_code"、"language_convert" 或 "optimize_code"
+      - language: 程式語言，例如 "Python", "Java" 等
+      - source_version: 原始版本（如適用，否則為空字串）
+      - target_version: 目標版本（如適用，否則為空字串）
+      - code: 原始程式碼內容
+    """
+    parsing_prompt = f"""請根據以下用戶輸入的指令，提取並生成一個 JSON 格式的結構化描述，其中必須包含以下欄位：
+- operation: 可選值包括 "convert_code"、"language_convert"、"optimize_code"。
+- language: 請指定程式語言，例如 "Python"、"Java" 等。
+- source_version: 如果適用，請指定原始版本，例如 "Python2"；若不適用請填空字串 ""。
+- target_version: 如果適用，請指定目標版本，例如 "Python3"；若不適用請填空字串 ""。
+- code: 請將原始程式碼內容提取出來。
+
+用戶輸入如下：
+{user_prompt}
+
+請只輸出符合 JSON 格式的結果，不需要任何額外說明。"""
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": parsing_prompt}]
+    )
+    print(response)
+    print("opeen ai 回應"+response.choices[0].message.content.strip())
+    try:
+        json_text = response.choices[0].message.content.strip()
+        structured_data = json.loads(json_text)
+        return structured_data
+    except Exception as e:
+        print("解析用戶指令失敗:", e)
+        return {}
+
+
+def unified_service(user_prompt: str, model: str = DEFAULT_MODEL) -> dict:
+    """
+    統一入口：
+      - 用戶直接輸入包含程式碼及需求的 prompt（例如「請將以下 Python 2 程式碼轉成 Python 3：...」，
+        或「請修正以下 Java 程式碼的錯誤：...」）。
+      - 結合高品質提示與用戶內容，要求 LLM 輸出兩部分內容：處理後的程式碼（僅程式碼）與相應的建議。
+      - 直接返回結果（無需先將用戶輸入轉成 JSON）。
+    """
+    # 將高品質提示與用戶輸入組合成最終 prompt，可根據需求補充要求
+    prompt = f"""{HIGH_QUALITY_PROMPT}
+
+    {user_prompt}
+
+    **要求：**
+    - 第一部分：請先提供處理後的程式碼，僅輸出程式碼內容（不要任何額外說明）。
+    - 第二部分：請提供相關建議，說明主要的改進點或變更重點。
+    """
+    system_message = "你是一個專業的程式碼處理工具，請根據用戶的指令對程式碼進行轉換、修正或優化，並僅提供正確格式的程式碼以及相應的建議。"
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
+    return clean_code_add_suggest(response)        
 def fix_error(language: str, code: str, error_message: str, model: str = DEFAULT_MODEL) -> str:
     # print("error_message", error_message)
     """
