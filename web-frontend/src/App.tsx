@@ -23,11 +23,9 @@ const App: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   // 新增 advice 狀態
   const [advice, setAdvice] = useState<string>('');
-
   // 測試專案的狀態
   const [testResult, setTestResult] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
-  
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);  // 是否顯示 Prompt 視窗
   const [userPrompt, setUserPrompt] = useState("");  // 存儲使用者輸入的 Prompt
   const [selectedCategory, setSelectedCategory] = useState("版本轉換");  // 預設選項
@@ -37,45 +35,199 @@ const App: React.FC = () => {
     setIsTesting(true);
     setTestResult(null);
   
-    try {
-      const response = await fetch('/api/test-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files }),
+    // 逐一處理每個檔案
+    for (const file of files) {
+      console.log("DEBUG: 處理檔案:", file.fileName);
+      const requestData = JSON.stringify({
+        code: JSON.stringify(file.newCode)
       });
+
+      try {
+        // 僅傳送 file.newCode 給後端 API
+        const response = await fetch(
+          "http://140.120.14.104:12345/llm/code/unit_test",
+          {
+            method: "POST",
+            headers: { 
+              "Accept": "application/json",
+              "Content-Type": "application/json" 
+            },
+            body: requestData,
+          }
+        );
   
-      const result = await response.json();
-      setTestResult(result.output || '測試完成，但無回傳結果');
-    } catch (error) {
-      setTestResult('測試失敗，請檢查後端連線');
-    } finally {
-      setIsTesting(false);
+        if (!response.ok) {
+          console.error(
+            `DEBUG: 檔案 ${file.fileName} 第一個後端回應錯誤, 狀態: ${response.status}`
+          );
+          continue;
+        }
+  
+        const result = await response.json();
+        console.log("DEBUG: 第一個後端回傳結果 for", file.fileName, result);
+        
+
+        // 假設後端回傳的 JSON 中有 unitTest 屬性
+        const unitTestCode = result.unit_test;
+        if (!unitTestCode) {
+          console.error(`DEBUG: 檔案 ${file.fileName} 未回傳 unit test code`);
+          continue;
+        }
+  
+        // 根據原始檔案路徑產生新的檔名：
+        // 例如：src/components/MyFile.tsx -> src/components/MyFile.unit.test.tsx
+        const pathParts = file.fileName.split("/");
+        const originalFileName = pathParts[pathParts.length - 1];
+        const dotIndex = originalFileName.lastIndexOf(".");
+        let unitTestFileName: string;
+        if (dotIndex !== -1) {
+          unitTestFileName =
+            originalFileName.substring(0, dotIndex) +
+            ".unit.test" +
+            originalFileName.substring(dotIndex);
+        } else {
+          unitTestFileName = originalFileName + ".unit.test";
+        }
+        const directory = pathParts.slice(0, -1).join("/");
+        // 若有目錄，則以 "目錄/新檔名" 方式命名（部分 OS 下載時可能會忽略目錄結構）
+        const fullUnitTestPath = directory ? directory + "/" + unitTestFileName : unitTestFileName;
+        console.log("DEBUG: 將 unit test 檔案儲存為:", fullUnitTestPath);
+  
+        // 利用 Blob 建立下載檔案
+        const blobUnit = new Blob([unitTestCode], { type: "text/plain;charset=utf-8" });
+        const urlUnit = URL.createObjectURL(blobUnit);
+        const aUnit = document.createElement("a");
+        aUnit.href = urlUnit;
+        aUnit.download = fullUnitTestPath; // 設定下載檔名
+        document.body.appendChild(aUnit);
+        aUnit.click();
+        document.body.removeChild(aUnit);
+        URL.revokeObjectURL(urlUnit);
+  
+        // 如有需要，可同步更新狀態，將 unit test code 加入該檔案記錄中
+        setFiles((prevFiles) =>
+          prevFiles.map((f) =>
+            f.fileName === file.fileName ? { ...f, unitTestCode } : f
+          )
+        );
+
+        // 2. 呼叫第二個後端，傳送 newCode 與 unitTestCode 來產生 Dockerfile 與 YAML 檔案
+        const payload = {
+          code: file.newCode,
+          unit_test: unitTestCode,
+        };
+        
+        const requestDeploy = JSON.stringify({
+          code: unitTestCode
+        });
+
+        console.log("DEBUG: 送往第二後端的 payload:", payload);
+
+        const secondResponse = await fetch(
+          "http://140.120.14.104:12345/llm/code/deployment_files",
+          {
+            method: "POST",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+            },
+            body: requestDeploy,
+          }
+        );
+        if (!secondResponse.ok) {
+          console.error(
+            "DEBUG: 第二後端回應錯誤 for file",
+            file.fileName,
+            secondResponse.status
+          );
+          continue;
+        }
+        const secondResult = await secondResponse.json();
+        console.log("DEBUG: 第二後端回傳結果 for file", file.fileName, secondResult);
+        // 假設第二後端回傳格式：
+        // {
+        //    message: "Dockerfile and YAML generated successfully",
+        //    dockerfile: "FROM python:3.9\n....",
+        //    yaml: "apiVersion: v1\nkind: Service\n..."
+        // }
+        const dockerfileContent = secondResult.dockerfile;
+        const yamlContent = secondResult.yaml;
+        if (!dockerfileContent || !yamlContent) {
+          console.error(
+            "DEBUG: 檔案",
+            file.fileName,
+            "第二後端未回傳 dockerfile 或 yaml"
+          );
+          continue;
+        }
+
+        // 產生 Dockerfile 與 YAML 檔案的檔名
+        let dockerFileName: string, yamlFileName: string;
+        if (dotIndex !== -1) {
+          dockerFileName = originalFileName.substring(0, dotIndex) + ".dockerfile";
+          yamlFileName = originalFileName.substring(0, dotIndex) + ".deployment.yaml";
+        } else {
+          dockerFileName = originalFileName + ".dockerfile";
+          yamlFileName = originalFileName + ".deployment.yaml";
+        }
+        const fullDockerPath = directory ? directory + "/" + dockerFileName : dockerFileName;
+        const fullYamlPath = directory ? directory + "/" + yamlFileName : yamlFileName;
+        console.log("DEBUG: 將 Dockerfile 儲存為:", fullDockerPath);
+        console.log("DEBUG: 將 YAML 檔案儲存為:", fullYamlPath);
+
+        // 下載 Dockerfile
+        const blobDocker = new Blob([dockerfileContent], { type: "text/plain;charset=utf-8" });
+        const urlDocker = URL.createObjectURL(blobDocker);
+        const aDocker = document.createElement("a");
+        aDocker.href = urlDocker;
+        aDocker.download = fullDockerPath;
+        document.body.appendChild(aDocker);
+        aDocker.click();
+        document.body.removeChild(aDocker);
+        URL.revokeObjectURL(urlDocker);
+
+        // 下載 YAML 檔案
+        const blobYaml = new Blob([yamlContent], { type: "text/plain;charset=utf-8" });
+        const urlYaml = URL.createObjectURL(blobYaml);
+        const aYaml = document.createElement("a");
+        aYaml.href = urlYaml;
+        aYaml.download = fullYamlPath;
+        document.body.appendChild(aYaml);
+        aYaml.click();
+        document.body.removeChild(aYaml);
+        URL.revokeObjectURL(urlYaml);
+      } catch (error) {
+        console.error("DEBUG: 處理檔案 " + file.fileName + " 時發生錯誤:", error);
+      }
     }
+  
+    setTestResult("所有單元測試檔案已下載");
+    setIsTesting(false);
   };
+  
 
   const handleConfirmPrompt = (prompt: string) => {
     if (!prompt.trim()) {
       alert("請輸入 Prompt！");
       return;
     }
-    
     setUserPrompt(prompt); // 先更新狀態
-
     //sendProjectToBackend(pendingFiles, prompt);
-    sendFilesToBackend(prompt);
+    files.forEach(file => {
+      sendFilesToBackend(file, prompt);
+    });
     setIsPromptModalOpen(false); //  確保 API 呼叫後才關閉視窗
   };
 
-  const sendFilesToBackend = async (prompt: string) => {
-    const filesToSendString = files.map(file => 
-      `### User Prompt:\n${prompt}\n\n### File: ${file.fileName}\n\n${file.oldCode}`
-    ).join("\n\n---\n\n");
-  
+  //將"1"個檔案送給OpenAI
+  const sendFilesToBackend = async (file: FileRecord, prompt: string) => {
+    const fileToSend = `### User Prompt:\n${prompt}\n\n### File: ${file.fileName}\n\n${file.oldCode}`;
     const requestData = JSON.stringify({
-      prompt: filesToSendString
+      prompt: fileToSend
     });
   
-    console.log("🔹 送出的 requestData:", requestData);
+    console.log("🔹 送出的 requestData for file:", file.fileName, requestData);
+  
   
     try {
       const response = await fetch('http://140.120.14.104:12345/llm/code/unified_operation', {
@@ -94,89 +246,43 @@ const App: React.FC = () => {
       console.log("後端回應結果:", result);
   
       if (result.result) {
-        console.log("result.result.converted_code:", result.result.converted_code);
-        console.log("result.result.suggestions:", result.result.suggestions);
-        
-        setFiles(prevFiles => {
-          console.log("🔍 result.result.fileName:", result.result.fileName);
-          console.log("🔍 prevFiles:", prevFiles.map(file => file.fileName));
-          const updatedFiles = prevFiles.map(file => {
-            // if (file.fileName.includes(result.result.fileName)) {
-              return {
-                ...file,
-                newCode: result.result.converted_code || file.oldCode, // 如果 newCode 是空的，就保持 oldCode
-                advice: result.result.suggestions,
-                loading: false
-              };
-            // }
-            return file;
-          });
+        // 更新該檔案在 files 陣列中的狀態
+        setFiles(prevFiles =>
+          prevFiles.map(f =>
+            f.fileName === file.fileName
+              ? {
+                  ...f,
+                  newCode: result.result.converted_code || f.oldCode,
+                  advice: result.result.suggestions,
+                  loading: false,
+                }
+              : f
+          )
+        );
   
-          console.log("🆕 更新後的 updatedFiles:", updatedFiles);
-  
-          return [...updatedFiles];
-        });
-  
-        // 確保 `selectedFile` 也更新
+        // 如果目前選取的檔案就是該檔案，更新 selectedFile 的內容
         setSelectedFile(prevFile => {
-          if (!prevFile) return null;
-          const updatedFile = files.find(f => f.fileName === result.result.fileName);
-          return updatedFile ? { ...prevFile, newCode: updatedFile.newCode, advice: updatedFile.advice } : prevFile;
+          if (prevFile && prevFile.fileName === file.fileName) {
+            return {
+              ...prevFile,
+              newCode: result.result.converted_code || prevFile.oldCode,
+              advice: result.result.suggestions,
+            };
+          }
+          return prevFile;
         });
       }
     } catch (error) {
-      console.error("🚨 傳送檔案至後端失敗:", error);
-    }
-  };
-
-
-  // // 呼叫後端 API，取得處理後的程式碼
-  // const sendProjectToBackend = async (projectFiles: FileRecord[], prompt: string) => {
-  //   try {
-  //     const response = await fetch('/api/process-project', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ files: projectFiles, prompt}), // 傳送 prompt 和 category
-  //     });
-  
-  //     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  
-  //     const data = await response.json();
-  //     console.log("後端回應資料:", data); //  檢查後端回應是否正確
-  //     if (data.files && data.files.length > 0) {
-  //       //  確保 `files` 狀態被正確更新，讓 React 重新渲染
-  //       setFiles(data.files);
-  
-  //       //  如果有選取的檔案，確保它的內容也更新
-  //       if (selectedFile) {
-  //         const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
-  //         if (updatedSelectedFile) {
-  //           setSelectedFile(updatedSelectedFile);
-  //         }
-  //       }
-  //     } else {
-  //       console.warn("後端沒有回傳新的檔案");
-  //     }
-  //   } catch (error) {
-  //     console.error('後端請求失敗', error);
-  //   }
-  // };
-
-  const handleCodeChange = (updatedCode: string) => {
-    if (selectedFile) {
-      setSelectedFile((prevFile) => prevFile ? { ...prevFile, newCode: updatedCode } : null);
-  
-      setFiles((prevFiles) =>
-        prevFiles.map((file) =>
-          file.fileName === selectedFile.fileName
-            ? { ...file, newCode: updatedCode } // 只更新當前檔案
-            : file
+      console.error("🚨 傳送檔案至後端失敗 for file:", file.fileName, error);
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          f.fileName === file.fileName
+            ? { ...f, error: "傳送檔案失敗", loading: false }
+            : f
         )
       );
     }
   };
-  
-  
 
   // 處理檔案上傳，讀取內容後呼叫後端，更新 state
   const handleProjectUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -233,7 +339,7 @@ const App: React.FC = () => {
             type="text"
             placeholder="請輸入您的 Prompt..."
             value={localPrompt}
-            onChange={(e) => setLocalPrompt(e.target.value)} // ✅ 不會導致視窗重新渲染
+            onChange={(e) => setLocalPrompt(e.target.value)} 
             style={inputStyle}
           />
   
@@ -246,7 +352,6 @@ const App: React.FC = () => {
     );
   };
   
-  
   const modalStyle : React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' };
   const modalContentStyle : React.CSSProperties = { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '350px', textAlign: 'center' };
   const inputStyle = { width: '100%', padding: '8px', marginTop: '10px', border: '1px solid #ddd', borderRadius: '5px' };
@@ -255,7 +360,54 @@ const App: React.FC = () => {
   const cancelButtonStyle = { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
 
 
+  //------------------------------------------------------------測試區域---------------------------------------------------------------------------------
+  // // 呼叫後端 API，取得處理後的程式碼
+  // const sendProjectToBackend = async (projectFiles: FileRecord[], prompt: string) => {
+  //   try {
+  //     const response = await fetch('/api/process-project', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ files: projectFiles, prompt}), // 傳送 prompt 和 category
+  //     });
+  
+  //     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  
+  //     const data = await response.json();
+  //     console.log("後端回應資料:", data); //  檢查後端回應是否正確
+  //     if (data.files && data.files.length > 0) {
+  //       //  確保 `files` 狀態被正確更新，讓 React 重新渲染
+  //       setFiles(data.files);
+  
+  //       //  如果有選取的檔案，確保它的內容也更新
+  //       if (selectedFile) {
+  //         const updatedSelectedFile = data.files.find((uf: FileRecord) => uf.fileName === selectedFile.fileName);
+  //         if (updatedSelectedFile) {
+  //           setSelectedFile(updatedSelectedFile);
+  //         }
+  //       }
+  //     } else {
+  //       console.warn("後端沒有回傳新的檔案");
+  //     }
+  //   } catch (error) {
+  //     console.error('後端請求失敗', error);
+  //   }
+  // };
 
+  // const handleCodeChange = (updatedCode: string) => {
+  //   if (selectedFile) {
+  //     setSelectedFile((prevFile) => prevFile ? { ...prevFile, newCode: updatedCode } : null);
+  
+  //     setFiles((prevFiles) =>
+  //       prevFiles.map((file) =>
+  //         file.fileName === selectedFile.fileName
+  //           ? { ...file, newCode: updatedCode } // 只更新當前檔案
+  //           : file
+  //       )
+  //     );
+  //   }
+  // };
+  //---------------------------------------------------------------------------------------------------------------------------------------------
+ 
   return (
     <div className="main-wrapper">
 
