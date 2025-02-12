@@ -29,8 +29,8 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
     <aside
       style={{
         width: `${width}px`, // 讓 Sidebar 可調整
-        minWidth: '150px',
-        maxWidth: '500px',
+        minWidth: '200px',
+        maxWidth: '600px',
         backgroundColor: '#f0f0f0',
         padding: '20px',
         boxSizing: 'border-box',

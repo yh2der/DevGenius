@@ -66,15 +66,18 @@ const CodeDiff: React.FC<CodeDiffProps> = ({ fileName, oldCode, newCode, loading
       
       {!loading && !error && (
         <>
+          <button onClick={handleEditClick} style={buttonStyle}>
+            編輯程式碼
+          </button>
+
+          <br></br>
           <DiffViewer
             oldValue={oldCode}
             newValue={editableCode}
             splitView={true}
             compareMethod={DiffMethod.WORDS}
           />
-          <button onClick={handleEditClick} style={buttonStyle}>
-            編輯程式碼
-          </button>
+          
 
           {/* 🆕 新增 Prompt 輸入框
           <div style={{ marginTop: '15px' }}>
