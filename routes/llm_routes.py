@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from models.llm_models import CodeTaskRequest, CodeUnitTestRequest, CodeUnifiedRequest, CodeDeploymentRequest
+from models.llm_models import CodeTaskRequest, CodeUnitTestRequest, CodeUnifiedRequest, CodeDeploymentRequest, MultifileRequest
 import json
-from services.llm_service import generate_unit_test,unified_service, generate_deployment_files
+from services.llm_service import generate_unit_test,unified_service, generate_deployment_files, process_multifiles
 from services.llm_service import (
     convert_code,
     language_convert,
@@ -123,5 +123,18 @@ async def generate_deployment_files_api(request: CodeDeploymentRequest):
             },
             media_type="application/json"
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/code/process_multi_files")
+async def process_files_endpoint(request: MultifileRequest):
+    """
+    接收前端傳入的包含任務與檔案的 JSON 請求，調用 GPT 處理後返回結果。
+    """
+    try:
+        # 將每個檔案轉換成字典格式，以便於服務層處理
+        files_list = [file.model_dump() for file in request.files]
+        result = process_multifiles(request.task, files_list)
+        return JSONResponse(content=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

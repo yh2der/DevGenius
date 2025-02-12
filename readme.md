@@ -75,6 +75,7 @@ python main.py   #正式執行
 ```
 預設伺服器會在 [http://127.0.0.1:8000](http://127.0.0.1:8000) 運行。
 
+可於http://127.0.0.1:8000/docs進行測試操作
 ## API 說明
 
 ### `POST /llm/code/unit_test`
@@ -85,7 +86,7 @@ python main.py   #正式執行
 }
 ```
 ### `POST /llm/code/unified_operation`
-給語言和程式碼，自動生成unit test
+給語言和程式碼，自動生成修正過後的程式碼和建議
 ```json
 {
   "prompt": "your code and prompt"
@@ -98,7 +99,23 @@ python main.py   #正式執行
   "code": "prompt"
 }
 ```
-
+### `POST /llm/code/unit_test`
+給語言和**多關聯檔案程式碼**，自動生成程式碼
+```json
+{
+  "task": "your task",
+           "files": [
+             {
+               "file_name": "file_name1",
+               "content": "file content"
+             },
+             {
+               "file_name": "file_name2",
+               "content": "file content"
+             }
+           ]
+}
+```
 
 ### `POST /llm/code/operation`
 統一入口 API，根據請求中的 `operation` 參數執行不同功能：

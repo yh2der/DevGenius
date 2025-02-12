@@ -1,6 +1,6 @@
 # models.py
 from pydantic import BaseModel
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 class CodeTaskRequest(BaseModel):
     language: Literal["python", "java"]
@@ -28,3 +28,14 @@ class CodeDeploymentRequest(BaseModel):
     並生成適用於 GKE 部署的 Dockerfile 與 Kubernetes YAML 文件。
     """
     code: str
+
+class FileContent(BaseModel):
+    file_name: str
+    content: str
+
+class MultifileRequest(BaseModel):
+    """
+    前端傳入的請求模型，包含任務描述和多個檔案
+    """
+    task: str
+    files: List[FileContent]

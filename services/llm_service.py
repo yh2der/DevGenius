@@ -274,3 +274,61 @@ def generate_deployment_files(code: str, model: str = DEFAULT_MODEL) -> dict:
         "dockerfile": dockerfile_code,
         "yaml": yaml_code
     }
+
+def process_multifiles(task: str, files: list) -> dict:
+    """
+    根據前端傳入的任務與檔案資訊生成 prompt，並調用 GPT 進行處理。
+    要求 GPT 輸出 JSON 格式，格式範例如下：
+    {
+      "task": "處理的任務描述",
+      "files": [
+         { "file_name": "app.py", "content": "處理後的 app.py 內容" },
+         { "file_name": "requirements.txt", "content": "處理後的內容" }
+      ],
+      "message": "附加處理訊息"
+    }
+    """
+    # 將檔案資訊整合成 prompt 內容
+    prompt = f"Task: {task}\n\n"
+    for file in files:
+        prompt += f"File: {file['file_name']}\nContent:\n{file['content']}\n\n"
+    prompt += (
+        "請根據上述檔案資訊進行處理，這些檔案可能互相關聯，請一次處理，"
+        "並將處理結果以 JSON 格式返回。請確保 JSON 格式中包含以下欄位：\n"
+        "- files: 檔案列表，每個檔案包含 file_name: 檔案名稱 與 content: 處理後的檔案內容 suggestions: 針對該檔案的修改建議\n"
+        "- message: 附加處理訊息\n"
+        "請只返回 JSON 格式的文字，不要額外說明。"
+    )
+
+    response = client.chat.completions.create(
+        model=DEFAULT_MODEL,  # 根據需求替換模型
+        messages=[
+            {"role": "system", "content": f"{HIGH_QUALITY_PROMPT} 你是一個專業的程式碼處理工具。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    answer = response.choices[0].message.content.strip()
+    # print(answer)
+    try:
+        result = parse_gpt_json(answer)
+    except Exception as e:
+        # 若解析 JSON 失敗，可回傳原始回應與錯誤訊息以供調試
+        result = {
+            "error": "Failed to parse GPT response",
+            "raw_response": answer,
+            "exception": str(e)
+        }
+    return result
+
+
+def parse_gpt_json(raw_response: str) -> dict:
+    """
+    移除 GPT 回傳內容中的 Markdown code block 格式，再解析成 JSON 物件。
+    """
+    # 移除開頭的 ```json 或 ```（包含換行）
+    cleaned = re.sub(r"^```(?:json)?\n", "", raw_response)
+    # 移除結尾的 ```（包含換行）
+    cleaned = re.sub(r"\n```$", "", cleaned)
+    # 嘗試解析 JSON
+    return json.loads(cleaned)
+
