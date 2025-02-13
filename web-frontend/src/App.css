@@ -39,15 +39,18 @@
 
 /* 若希望頁面內容靠左顯示，可調整 body 的設定（或移除 flex 屬性） */
 body, #root {
-  display: flex;
-  justify-content: center; /* ✅ **讓主畫面水平置中** */
-  align-items: center; /* ✅ **讓主畫面垂直置中** */
-  width: 100vw;
-  height: 100vh;
   margin: 0;
   padding: 0;
   background-color: #f4f4f9;
+  /* 取消以下容易造成捲動問題的設定
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
   overflow: hidden;
+  */
+  width: 100%;
+  min-height: 100vh; /* 讓頁面至少撐滿視窗高度 */
 }
 
 
@@ -66,17 +69,20 @@ body, #root {
 
 .main-wrapper {
   display: flex;
-  width: 95vw; /* 🚀 設定主容器的寬度 */
-  max-width: 3000px; /* 限制最大寬度，避免過度擴展 */
-  height: 100vh; /* 🚀 設定合適的高度 */
-  justify-content: center; /* ✅ **讓內部內容水平置中** */
-  align-items: center; /* ✅ **讓內部內容垂直置中** */
+  width: 99vw; 
+  max-width: 3000px;
+  /* 移除 height: 100vh，改用 min-height 讓內容能撐開 */
+  min-height: 100vh;
+  justify-content: center; 
+  align-items: flex-start; /* 避免全部被垂直置中 */
   background-color: #eaeaea;
   flex-wrap: nowrap;
-  overflow-x: hidden;
+  overflow-x: hidden; /* 如果想要橫向不要捲動，可保留；否則可以改為 auto */
   padding: 20px;
   gap: 30px;
-  margin: 0 auto; /* ✅ 🚀 **確保 `main-wrapper` 置中** */
+  margin: 0 auto; 
+  /* 讓出固定標題的高度，避免被標題擋住 */
+  padding-top: 120px; /* 或者直接用 margin-top: 120px; 也可以 */
 }
 
 
@@ -87,31 +93,34 @@ body, #root {
   padding: 10px;
 }
 
-.title-container{
-  position: fixed; /* 固定在頁面頂部 */
-  top: 0; /* 靠頂部 */
-  left: 150;
-  width: 92vw; /* 撐滿整個頁面 */
-  max-width: 2600px;
-  background: white; /* 確保背景不透明 */
-  z-index: 1000; /* 讓標題在最上層 */
-  padding: 15px 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 加陰影提升可視性 */
-  border-radius: 10px;
-  margin: 0 auto;
+.title-container {
+  position: fixed;     /* 固定在視窗 */
+  top: 0;              /* 靠上 */
+  left: 0;             /* 從左側開始 */
+  right: 0;            /* 撐到右側，等同於 width: 100% */
+  background: #fff;    /* 白色背景 */
+  text-align: center;  /* 文字置中 */
+  padding: 15px 0;     /* 上下留白 */
+  z-index: 9999;       /* 讓它浮在最上層 */
+}
+
+.title-container h2 {
+  margin: 0;           /* 清除預設 margin，避免額外空白 */
 }
 
 .app-container {
   display: flex;
+  margin-top: 80px;
   flex-grow: 1;
-  height: 90vh;
+  /* 原本是 height: 90vh; 建議改為 min-height 或 auto */
+  min-height: 1100px; /* 依需求自行調整 */
   max-width: 2400px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   background: white;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: auto; /* 容器若內容過多，允許捲動 */
   text-align: left;
-  margin-top: 100px; /* 確保不會被 .title-container 遮擋 */
+  margin-top: 0; /* 原本是 100px; 如果頂部固定，就改用 .main-wrapper 的 padding-top 來騰空 */
 }
 
 .sidebar {
@@ -223,39 +232,6 @@ button:last-child {
   color: white;
 }
 
-/* .spinner-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.7);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
-.spinner {
-  border: 8px solid #f3f3f3;
-  border-top: 8px solid #3498db;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 15px;
-}
-
-.progress-text {
-  font-size: 16px;
-  color: #333;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-} */
 
 /* 跑道樣式 */
 /* 直線跑道容器 */

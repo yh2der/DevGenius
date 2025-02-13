@@ -6,7 +6,6 @@ import FileList from './components/FileList';
 import RaceCarLoading from './components/RaceCarLoading';
 import './App.css';
 
-
 export interface FileRecord {
   fileName: string;
   oldCode: string;
@@ -20,43 +19,52 @@ export interface FileRecord {
 }
 
 const App: React.FC = () => {
-  // 儲存所有上傳的檔案記錄
+  // 原有 state
   const [files, setFiles] = useState<FileRecord[]>([]);
-  // 儲存目前被選取的檔案記錄
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
-  // 新增 advice 狀態
   const [advice, setAdvice] = useState<string>('');
-  // 測試專案的狀態
   const [testResult, setTestResult] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
-  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);  // 是否顯示 Prompt 視窗
-  const [userPrompt, setUserPrompt] = useState("");  // 存儲使用者輸入的 Prompt
-  const [selectedCategory, setSelectedCategory] = useState("版本轉換");  // 預設選項
-  const [pendingFiles, setPendingFiles] = useState<FileRecord[]>([]); // 暫存上傳的檔案
-
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [userPrompt, setUserPrompt] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("版本轉換");
+  const [pendingFiles, setPendingFiles] = useState<FileRecord[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [progress, setProgress] = useState(0);
-
   const [processingMode, setProcessingMode] = useState("single");
-
-  // 新增：控制 rethinking prompt modal 是否開啟
   const [isRethinkModalOpen, setIsRethinkModalOpen] = useState(false);
+  // 新增：儲存每個檔案的測試 log，key 為檔名
+  const [fileLogs, setFileLogs] = useState<{ [fileName: string]: string }>({});
+  // 新增：控制 log Modal 的 state
+  const [logModal, setLogModal] = useState<{ isOpen: boolean; log: string; fileName: string }>({
+    isOpen: false,
+    log: '',
+    fileName: ''
+  });
+  //新增 state 儲存測試進度
+  const [testProgress, setTestProgress] = useState<string[]>([]);
 
-  // 新增：控制 rethinking prompt modal 是否開啟
+  // 開啟 log Modal 的處理函式
+  const openLogModal = (fileName: string) => {
+    setLogModal({ isOpen: true, log: fileLogs[fileName], fileName });
+  };
 
+  // 關閉 log Modal
+  const closeLogModal = () => {
+    setLogModal({ isOpen: false, log: '', fileName: '' });
+  };
+
+  // 處理 AI Rethink
   const handleConfirmRethink = async (prompt: string) => {
     if (!selectedFile) return;
     if (!prompt.trim()) {
       alert("請輸入 Prompt！");
       return;
     }
-    // 關閉 PromptModal
     setIsRethinkModalOpen(false);
-    // 開始更新，顯示 RaceCarLoading
     setIsUpdating(true);
     setProgress(0);
 
-    // 使用目前檔案的 newCode 當作輸入，並附加使用者輸入的 prompt
     const fileToSend = `### AI Rethink Request:\n\n${prompt}\n\n### File: ${selectedFile.fileName}\n\n${selectedFile.newCode}`;
     const requestData = JSON.stringify({ prompt: fileToSend });
     
@@ -78,7 +86,6 @@ const App: React.FC = () => {
       console.log("AI Rethink 回應結果:", result);
 
       if (result.result) {
-        // 更新該檔案的 newCode 與 advice
         setFiles(prevFiles =>
           prevFiles.map(f =>
             f.fileName === selectedFile.fileName
@@ -102,10 +109,14 @@ const App: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error("AI Rethink 發生錯誤:", error);
+      if (error instanceof Error) {
+        console.error("AI Rethink 發生錯誤:", error.message);
+      } else {
+        console.error("AI Rethink 發生錯誤:", error);
+      }
       setFiles(prevFiles =>
         prevFiles.map(f =>
-          f.fileName === selectedFile.fileName
+          f.fileName === selectedFile!.fileName
             ? { ...f, error: "AI Rethink 失敗", loading: false }
             : f
         )
@@ -116,20 +127,97 @@ const App: React.FC = () => {
     }
   };
 
+  // ★★★ 新增：產生配置檔( Dockerfile & YAML )並下載檔案 ★★★
+  const handleGenerateConfigs = async () => {
+    if (!files || files.length === 0) return;
+  
+    // 下載用的輔助函式
+    const downloadFile = (filename: string, content: string) => {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    };
+  
+    for (const file of files) {
+      try {
+        // 取得檔案名稱的最後一段
+        const fileNamePart = file.fileName.split('/').pop() || 'unknown.txt';
+  
+        // 準備要送出的 payload
+        const requestData = JSON.stringify({
+          file_name: "test_" + fileNamePart,
+          code: file.newCode,
+        });
+  
+        const response = await fetch(
+          'http://140.120.14.104:12345/llm/code/deployment_files',
+          {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: requestData,
+          }
+        );
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `HTTP Error! Status: ${response.status}, Details: ${errorText}`
+          );
+        }
+  
+        const result = await response.json();
+        console.log(`部署檔案產生結果 for ${file.fileName}:`, result);
+  
+        // 若後端回傳了 dockerfile 或 yaml，則下載（檔名依據原檔名加上標示）
+        if (result.dockerfile) {
+          downloadFile(`${fileNamePart}_Dockerfile`, result.dockerfile);
+        }
+        if (result.yaml) {
+          downloadFile(`${fileNamePart}_deployment.yaml`, result.yaml);
+        }
+  
+        // 下載目前的 newCode，檔名改成「原檔名_fixed.副檔名」
+        const fileNameOnly = file.fileName.split('/').pop() || 'converted_code.js';
+        let baseName = fileNameOnly;
+        let extension = '';
+        const dotIndex = fileNameOnly.lastIndexOf('.');
+        if (dotIndex !== -1) {
+          baseName = fileNameOnly.substring(0, dotIndex);
+          extension = fileNameOnly.substring(dotIndex);
+        }
+        const newFileName = `${baseName}_fixed${extension}`;
+        downloadFile(newFileName, file.newCode);
+      } catch (error) {
+        console.error("產生部署檔案失敗 for file:", file.fileName, error);
+        alert(`產生配置檔時發生錯誤，檔案: ${file.fileName}`);
+      }
+    }
+  };
+  
 
+  // 產生 Dockerfile、yaml、unitTest，並送去 GKE 測試
   const handleTestProject = async () => {
     setIsTesting(true);
-    setTestResult(null);
+    setTestProgress(["開始測試專案…"]);
+    setTestResult("專案在 GKE 測試中…");
+    setFileLogs({}); // 清空先前的 log
+    const newFiles = [...files]; // 先複製一份
   
     // 逐一處理每個檔案
-    for (const file of files) {
-      console.log("DEBUG: 處理檔案:", file.fileName);
-      const requestData = JSON.stringify({
-        code: JSON.stringify(file.newCode)
-      });
-
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i];
+      // 1. 產生 UnitTest
       try {
-        // 僅傳送 file.newCode 給後端 API
+        const requestData = JSON.stringify({
+          code: JSON.stringify(file.newCode)
+        });
         const response = await fetch(
           "http://140.120.14.104:12345/llm/code/unit_test",
           {
@@ -142,67 +230,26 @@ const App: React.FC = () => {
           }
         );
         if (!response.ok) {
-          console.error(
-            `DEBUG: 檔案 ${file.fileName} 第一個後端回應錯誤, 狀態: ${response.status}`
-          );
+          console.error(`檔案 ${file.fileName} 產生 UnitTest 失敗`);
+          setTestProgress(prev => [...prev, `UnitTest 失敗: ${file.fileName}`]);
           continue;
         }
         const result = await response.json();
-        console.log("DEBUG: 第一個後端回傳結果 for", file.fileName, result);
-        // 假設後端回傳的 JSON 中有 unitTest 屬性
         const unitTestCode = result.unit_test;
-        if (!unitTestCode) {
-          console.error(`DEBUG: 檔案 ${file.fileName} 未回傳 unit test code`);
-          continue;
-        }
-        // 如有需要，可同步更新狀態，將 unit test code 加入該檔案記錄中
-        setFiles((prevFiles) =>
-          prevFiles.map((f) =>
-            f.fileName === file.fileName ? { ...f, unitTestCode } : f
-          )
-        );
+        file.unitTestCode = unitTestCode;
+        setTestProgress(prev => [...prev, `UnitTest 產生完成: ${file.fileName}`]);
+      } catch (error) {
+        console.error("產生 UnitTest 時發生錯誤:", error);
+        setTestProgress(prev => [...prev, `UnitTest 發生錯誤: ${file.fileName}`]);
+        continue;
+      }
   
-        // // 根據原始檔案路徑產生新的檔名：
-        // // 例如：src/components/MyFile.tsx -> src/components/MyFile.unit.test.tsx
-        // const pathParts = file.fileName.split("/");
-        // const originalFileName = pathParts[pathParts.length - 1];
-        // const dotIndex = originalFileName.lastIndexOf(".");
-        // let unitTestFileName: string;
-        // if (dotIndex !== -1) {
-        //   unitTestFileName =
-        //     originalFileName.substring(0, dotIndex) +
-        //     ".unit.test" +
-        //     originalFileName.substring(dotIndex);
-        // } else {
-        //   unitTestFileName = originalFileName + ".unit.test";
-        // }
-        // const directory = pathParts.slice(0, -1).join("/");
-        // // 若有目錄，則以 "目錄/新檔名" 方式命名（部分 OS 下載時可能會忽略目錄結構）
-        // const fullUnitTestPath = directory ? directory + "/" + unitTestFileName : unitTestFileName;
-        // console.log("DEBUG: 將 unit test 檔案儲存為:", fullUnitTestPath);
-  
-        // // 利用 Blob 建立下載檔案
-        // const blobUnit = new Blob([unitTestCode], { type: "text/plain;charset=utf-8" });
-        // const urlUnit = URL.createObjectURL(blobUnit);
-        // const aUnit = document.createElement("a");
-        // aUnit.href = urlUnit;
-        // aUnit.download = fullUnitTestPath; // 設定下載檔名
-        // document.body.appendChild(aUnit);
-        // aUnit.click();
-        // document.body.removeChild(aUnit);
-        // URL.revokeObjectURL(urlUnit);
-  
-        
-
-        // 2. 呼叫第二個後端，傳送 newCode 與 unitTestCode 來產生 Dockerfile 與 YAML 檔案
-        const payload = {
-          code: file.newCode,
-          unit_test: unitTestCode,
-        };
+      // 2. 產生 Dockerfile 與 YAML
+      try {
         const requestDeploy = JSON.stringify({
-          code: unitTestCode
+          file_name: "test_" + file.fileName.split('/').pop(),
+          code: file.unitTestCode || ""
         });
-        console.log("DEBUG: 送往第二後端的 payload:", payload);
         const secondResponse = await fetch(
           "http://140.120.14.104:12345/llm/code/deployment_files",
           {
@@ -215,161 +262,137 @@ const App: React.FC = () => {
           }
         );
         if (!secondResponse.ok) {
-          console.error(
-            "DEBUG: 第二後端回應錯誤 for file",
-            file.fileName,
-            secondResponse.status
-          );
+          console.error(`檔案 ${file.fileName} 產生部署檔案失敗`);
+          setTestProgress(prev => [...prev, `部署檔案失敗: ${file.fileName}`]);
           continue;
         }
         const secondResult = await secondResponse.json();
-        console.log("DEBUG: 第二後端回傳結果 for file", file.fileName, secondResult);
         const dockerfileContent = secondResult.dockerfile;
         const yamlContent = secondResult.yaml;
-        if (!dockerfileContent || !yamlContent) {
-          console.error(
-            "DEBUG: 檔案",
-            file.fileName,
-            "第二後端未回傳 dockerfile 或 yaml"
-          );
-          continue;
-        }
-        setFiles((prevFiles) =>
-          prevFiles.map((f) =>
-            f.fileName === file.fileName
-              ? { ...f, dockerfileContent, yamlContent }
-              : f
-          )
-        );
+        file.dockerfileContent = dockerfileContent;
+        file.yamlContent = yamlContent;
 
-        // // 產生 Dockerfile 與 YAML 檔案的檔名
-        // let dockerFileName: string, yamlFileName: string;
-        // if (dotIndex !== -1) {
-        //   dockerFileName = originalFileName.substring(0, dotIndex) + ".dockerfile";
-        //   yamlFileName = originalFileName.substring(0, dotIndex) + ".deployment.yaml";
-        // } else {
-        //   dockerFileName = originalFileName + ".dockerfile";
-        //   yamlFileName = originalFileName + ".deployment.yaml";
-        // }
-        // const fullDockerPath = directory ? directory + "/" + dockerFileName : dockerFileName;
-        // const fullYamlPath = directory ? directory + "/" + yamlFileName : yamlFileName;
-        // console.log("DEBUG: 將 Dockerfile 儲存為:", fullDockerPath);
-        // console.log("DEBUG: 將 YAML 檔案儲存為:", fullYamlPath);
-
-        // // 下載 Dockerfile
-        // const blobDocker = new Blob([dockerfileContent], { type: "text/plain;charset=utf-8" });
-        // const urlDocker = URL.createObjectURL(blobDocker);
-        // const aDocker = document.createElement("a");
-        // aDocker.href = urlDocker;
-        // aDocker.download = fullDockerPath;
-        // document.body.appendChild(aDocker);
-        // aDocker.click();
-        // document.body.removeChild(aDocker);
-        // URL.revokeObjectURL(urlDocker);
-
-        // // 下載 YAML 檔案
-        // const blobYaml = new Blob([yamlContent], { type: "text/plain;charset=utf-8" });
-        // const urlYaml = URL.createObjectURL(blobYaml);
-        // const aYaml = document.createElement("a");
-        // aYaml.href = urlYaml;
-        // aYaml.download = fullYamlPath;
-        // document.body.appendChild(aYaml);
-        // aYaml.click();
-        // document.body.removeChild(aYaml);
-        // URL.revokeObjectURL(urlYaml);
+        setTestProgress(prev => [...prev, `部署檔案產生完成: ${file.fileName}`]);
       } catch (error) {
-        console.error("DEBUG: 處理檔案 " + file.fileName + " 時發生錯誤:", error);
+        console.error("產生部署檔案時發生錯誤:", error);
+        setTestProgress(prev => [...prev, `部署檔案發生錯誤: ${file.fileName}`]);
+        continue;
       }
     }
-
-    // 當所有檔案處理完畢後，呼叫新的後端
+  
+    // 3. 呼叫 /submit_files 測試 GKE 部署
+    setFiles(newFiles);
     await sendProcessedFilesToAnotherBackend();
-    setTestResult("所有單元測試檔案已下載");
+    setTestProgress(prev => [...prev, "GKE 部署測試完成"]);
+    setTestResult("所有檔案測試完成");
     setIsTesting(false);
   };
 
-
-  //送去GKE測試
+  function b64EncodeUnicode(str: string): string {
+    // 將字串先使用 encodeURIComponent 編碼，再用 replace 把 %xx 轉回字元
+    return btoa(
+      encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, 
+        (_, p1) => String.fromCharCode(parseInt(p1, 16)))
+    );
+  }
+  
+  // 送出處理後的檔案到 /submit_files (測試 GKE 部署)
   const sendProcessedFilesToAnotherBackend = async () => {
-    // 過濾出已取得所有三個檔案內容的記錄
+    
+    // 先篩選出符合條件的檔案
     const processedFiles = files.filter(
       file => file.unitTestCode && file.dockerfileContent && file.yamlContent
     );
+    console.log("processedFiles : ",processedFiles);
+    // 用來儲存每個檔案回傳的 log
+    const logsObj: Record<string, string> = {};
   
-    // 組成傳送用的 payload
-    const payload = JSON.stringify({
-      files: processedFiles.map(file => ({
-        // 這裡假設後端只需要檔名，不含目錄路徑
-        file_name: file.fileName.split('/').pop(),
-        unit_test: file.unitTestCode,
-        dockerfile: file.dockerfileContent,
-        yaml: file.yamlContent,
-      }))
-    });
-    /* {
-      "files": [
-        {
-          "file_name": "app.py",
-          "unit_test": "unit test 的內容…",
-          "dockerfile": "Dockerfile 的內容…",
-          "yaml": "Yaml 的內容…"
-        },
-        { … }
-      ]
-    }*/
-    try {
-      const response = await fetch('http://140.120.14.104:12345/llm/code/submit_files', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: payload
+    for (const file of processedFiles) {
+
+      console.log("file.unitTestCode : ", file.unitTestCode);
+      console.log("file.yamlContent : ", file.yamlContent);
+      console.log("file.dockerfileContent : ", file.dockerfileContent);
+      // 準備單一檔案的 payload
+      const base64UnitTestCode = b64EncodeUnicode(file.unitTestCode || '');
+      const base64YamlContent = b64EncodeUnicode(file.yamlContent|| '');
+      const base64DockerfileContent = b64EncodeUnicode(file.dockerfileContent|| '');
+      const singlePayload = JSON.stringify({
+        code_files: [
+          {
+            filename: "test_" + file.fileName.split('/').pop() , 
+            content: base64UnitTestCode,
+          }
+        ],
+        job_yaml: base64YamlContent,
+        dockerfile: base64DockerfileContent,
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP Error! Status: ${response.status}, Details: ${errorText}`);
+      console.log("送給GKE的檔案 : ", singlePayload);
+      // 設置超時機制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 100000); // 100 秒後中斷
+  
+      try {
+        // 逐一送出請求
+        const response = await fetch('http://34.171.66.126/deploy', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: singlePayload,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP Error! Status: ${response.status}, Details: ${errorText}`);
+        }
+  
+        const result = await response.json();
+        console.log("GKE回傳的log:", result);
+
+        // 先確保 logsObj[file.fileName] 有預設值 (空字串)
+        logsObj[file.fileName] = logsObj[file.fileName] || "";
+        
+        if (result.status === "success" && result.kubectl_logs) {
+          const decodedKubectlLogs = atob(result.kubectl_logs);
+          // 累加進去
+          logsObj[file.fileName] += "=== KUBECTL LOGS ===\n" + decodedKubectlLogs + "\n\n";
+        }
+  
+        // 如果後端有回傳 result.logs，就繼續累加
+        if (result.logs) {
+          logsObj[file.fileName] += "=== EXECUTION LOGS ===\n" + result.logs + "\n\n";
+        }
+  
+        // 如果後端以 { file_name, log } 或 { files: [ {file_name, log} ] } 回傳
+        else if (result.file_name && result.log) {
+          logsObj[file.fileName] += `=== ${result.file_name} ===\n` + result.log + "\n\n";
+        } else if (result.files && Array.isArray(result.files)) {
+          result.files.forEach((f: any) => {
+            logsObj[file.fileName] += `=== ${f.file_name} ===\n` + f.log + "\n\n";
+          });
+        }
+  
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            console.error("請求超時，後端處理時間過長。");
+          } else {
+            console.error("提交處理後檔案失敗:", error.message);
+          }
+        } else {
+          console.error("提交處理後檔案失敗:", error);
+        }
       }
-      const result = await response.json();
-      console.log("提交處理後檔案結果:", result);
-      // 根據需要，你可以在此處更新 UI 或是給使用者提示
-    } catch (error) {
-      console.error("提交處理後檔案失敗:", error);
     }
+  
+    // 將所有檔案的 log 統一更新到 state
+    setFileLogs(logsObj);
   };
   
-
-  const handleConfirmPrompt = async (prompt: string) => {
-    if (!prompt.trim()) {
-      alert("請輸入 Prompt！");
-      return;
-    }
-    setUserPrompt(prompt); // 先更新狀態
-    setProgress(0); // 重置進度
-    setIsUpdating(true); // 開始更新，顯示 loading spinner
-
-    try {
-      if (processingMode === "single") {
-        await Promise.all(
-          files.map(async (file) => {
-            await sendFilesToBackend(file, prompt);
-            // 每完成一個檔案，就更新一次進度
-            setProgress((prev) => prev + 1);
-          })
-        );
-      } else if (processingMode === "multi") {
-        await sendFilesToMultiBackend(files, prompt);
-        setProgress(files.length);
-      }
-    } catch (error) {
-      console.error("更新檔案時發生錯誤：", error);
-    }
-  
-    setIsUpdating(false); // 更新完畢，隱藏 loading spinner
-    setIsPromptModalOpen(false);
-  };
-
-  //將"1"個檔案送給OpenAI
+  // 送單一檔案給後端處理
   const sendFilesToBackend = async (file: FileRecord, prompt: string) => {
     const fileToSend = `### User Prompt:\n${prompt}\n\n### File: ${file.fileName}\n\n${file.oldCode}`;
     const requestData = JSON.stringify({
@@ -393,7 +416,6 @@ const App: React.FC = () => {
       console.log("後端回應結果:", result);
   
       if (result.result) {
-        // 更新該檔案在 files 陣列中的狀態
         setFiles(prevFiles =>
           prevFiles.map(f =>
             f.fileName === file.fileName
@@ -406,7 +428,6 @@ const App: React.FC = () => {
               : f
           )
         );
-        // 如果目前選取的檔案就是該檔案，更新 selectedFile 的內容
         setSelectedFile(prevFile => {
           if (prevFile && prevFile.fileName === file.fileName) {
             return {
@@ -430,88 +451,17 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAIRethink = async () => {
-    if (!selectedFile) return;
-  
-    // 以 newCode 當作輸入來產生新的 payload
-    const fileToSend = `### User Prompt:\n${prompt}\n\n### File: ${selectedFile.fileName}\n\n${selectedFile.newCode}`;
-    const requestData = JSON.stringify({
-      prompt: fileToSend
-    });
-  
-    // 更新該檔案的 loading 狀態
-    setFiles(prevFiles =>
-      prevFiles.map(f =>
-        f.fileName === selectedFile.fileName ? { ...f, loading: true } : f
-      )
-    );
-  
-    try {
-      const response = await fetch(
-        'http://140.120.14.104:12345/llm/code/unified_operation',
-        {
-          method: 'POST',
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-          body: requestData,
-        }
-      );
-  
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP Error! Status: ${response.status}, Details: ${errorText}`);
-      }
-  
-      const result = await response.json();
-      console.log("AI Rethink 回應結果:", result);
-  
-      if (result.result) {
-        // 更新檔案的 newCode 與 advice（建議）
-        setFiles(prevFiles =>
-          prevFiles.map(f =>
-            f.fileName === selectedFile.fileName
-              ? {
-                  ...f,
-                  newCode: result.result.converted_code || f.newCode,
-                  advice: result.result.suggestions,
-                  loading: false,
-                }
-              : f
-          )
-        );
-        // 如果目前有選取檔案，也更新它
-        setSelectedFile(prev =>
-          prev
-            ? {
-                ...prev,
-                newCode: result.result.converted_code || prev.newCode,
-                advice: result.result.suggestions,
-              }
-            : prev
-        );
-      }
-    } catch (error) {
-      console.error("AI Rethink 發生錯誤:", error);
-      setFiles(prevFiles =>
-        prevFiles.map(f =>
-          f.fileName === selectedFile.fileName ? { ...f, error: "AI Rethink 失敗", loading: false } : f
-        )
-      );
-    }
-  };
-  
-
-
-  // 新增：批次處理所有檔案的函式
+  // 關聯檔案送給後端
   const sendFilesToMultiBackend = async (files: FileRecord[], prompt: string) => {
     const filesToSend = files.map(file => ({
       file_name: file.fileName.split('/').pop(), 
-      content: file.oldCode,    // 傳送原始程式碼
+      content: file.oldCode,
     }));
   
     const payload = JSON.stringify({
-      task: prompt, // 以 task 來傳送使用者的 prompt
+      task: prompt,
       files: filesToSend,
-    })
+    });
 
     try {
       const response = await fetch('http://140.120.14.104:12345/llm/code/process_multi_files', {
@@ -528,11 +478,8 @@ const App: React.FC = () => {
       }
       const result = await response.json();
       console.log("後端批次回應結果:", result);
-      // 假設後端回傳格式為：
-      // { results: [ { fileName, converted_code, suggestions }, ... ] }
       if (result.files && Array.isArray(result.files)) {
         const updatedFiles = files.map(file => {
-          // 取得前端記錄的檔案名稱中的檔名部分
           const fileNameOnly = file.fileName.split('/').pop();
           const fileResult = result.files.find((res: any) => res.file_name === fileNameOnly);
           if (fileResult) {
@@ -563,7 +510,7 @@ const App: React.FC = () => {
     }
   };
 
-  // 處理檔案上傳，讀取內容後呼叫後端，更新 state
+  // 處理檔案上傳
   const handleProjectUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
     if (!uploadedFiles) return;
@@ -592,23 +539,23 @@ const App: React.FC = () => {
   
     Promise.all(fileReaders).then(() => {
       console.log("🔹 上傳的檔案:", projectFiles);
-      setFiles(projectFiles); // 更新狀態
-      setPendingFiles(projectFiles); // 先存入暫存狀態
-      setIsPromptModalOpen(true);  // 顯示模態視窗
+      setFiles(projectFiles);
+      setPendingFiles(projectFiles);
+      setIsPromptModalOpen(true);
     });
   };
   
-
-  // 當使用者點選左側檔案列表時，更新選取的檔案
+  // 當使用者點選檔案列表時更新選取檔案
   const handleSelectFile = (fileRecord: FileRecord) => {
-    setSelectedFile(fileRecord); // 確保 selectedFile 更新為新的檔案
-    setAdvice(fileRecord.advice || '尚無建議'); // 當選擇新檔案時，顯示對應的建議
+    setSelectedFile(fileRecord);
+    setAdvice(fileRecord.advice || '尚無建議');
   };
 
+  // 用於輸入 Prompt 的 Modal
   const PromptModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: (prompt: string) => void }) => {
     const [localPrompt, setLocalPrompt] = useState("");
   
-    if (!isOpen) return null; // 避免不必要的渲染
+    if (!isOpen) return null;
   
     return (
       <div style={modalStyle}>
@@ -621,7 +568,6 @@ const App: React.FC = () => {
             onChange={(e) => setLocalPrompt(e.target.value)} 
             style={inputStyle}
           />
-  
           <div style={modalButtonContainer}>
             <button onClick={() => onConfirm(localPrompt)} style={confirmButtonStyle}>確認</button>
             <button onClick={onClose} style={cancelButtonStyle}>取消</button>
@@ -630,14 +576,59 @@ const App: React.FC = () => {
       </div>
     );
   };
-  
-  const modalStyle : React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' };
-  const modalContentStyle : React.CSSProperties = { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '350px', textAlign: 'center' };
+
+  // 新增：用於顯示 log 的 Modal
+  const LogModal = ({ isOpen, onClose, log, fileName }: { isOpen: boolean; onClose: () => void; log: string; fileName: string }) => {
+    if (!isOpen) return null;
+    return (
+      <div style={modalStyle}>
+        <div style={modalContentStyle}>
+          <h3>{fileName} 的測試報告</h3>
+          <pre style={{ textAlign: 'left', maxHeight: '300px', overflowY: 'auto' }}>{log}</pre>
+          <button onClick={onClose} style={confirmButtonStyle}>關閉</button>
+        </div>
+      </div>
+    );
+  };
+
+  // 共用 Modal 樣式
+  const modalStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' };
+  const modalContentStyle: React.CSSProperties = { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '350px', textAlign: 'center' };
   const inputStyle = { width: '100%', padding: '8px', marginTop: '10px', border: '1px solid #ddd', borderRadius: '5px' };
   const modalButtonContainer = { marginTop: '10px', display: 'flex', justifyContent: 'space-between' };
   const confirmButtonStyle = { padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
   const cancelButtonStyle = { padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
  
+  // 處理 Prompt 確認
+  const handleConfirmPrompt = async (prompt: string) => {
+    if (!prompt.trim()) {
+      alert("請輸入 Prompt！");
+      return;
+    }
+    setUserPrompt(prompt);
+    setProgress(0);
+    setIsUpdating(true);
+
+    try {
+      if (processingMode === "single") {
+        await Promise.all(
+          files.map(async (file) => {
+            await sendFilesToBackend(file, prompt);
+            setProgress((prev) => prev + 1);
+          })
+        );
+      } else if (processingMode === "multi") {
+        await sendFilesToMultiBackend(files, prompt);
+        setProgress(files.length);
+      }
+    } catch (error) {
+      console.error("更新檔案時發生錯誤：", error);
+    }
+  
+    setIsUpdating(false);
+    setIsPromptModalOpen(false);
+  };
+
   return (
     <div className="main-wrapper">
       {isUpdating && (
@@ -653,12 +644,20 @@ const App: React.FC = () => {
           onConfirm={handleConfirmRethink}
         />
       )}
+
+      {/* 顯示 log Modal */}
+      <LogModal 
+        isOpen={logModal.isOpen}
+        onClose={closeLogModal}
+        log={logModal.log}
+        fileName={logModal.fileName}
+      />
+
       <div className="title-container">
-        <h2>AI 維運懶人包</h2>
+        <h2>AI 維運懶人包 tu_tu_tu_du</h2>
       </div>
       <div className="app-container">
         <Sidebar>
-          {/* 新增模式切換按鈕 */}
           <div className="mode-toggle" style={{ marginBottom: '10px', textAlign: 'center' }}>
             <button
               onClick={() => setProcessingMode('single')}
@@ -705,20 +704,39 @@ const App: React.FC = () => {
                 }}
               >
                 <h3>程式碼比對 - {selectedFile.fileName}</h3>
-                <button
-                  onClick={() => setIsRethinkModalOpen(true)}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                  }}
-                  disabled={selectedFile.loading}  // 可依需求禁用按鈕
-                >
-                  AI rethink
-                </button>
+                <div>
+                  <button
+                    onClick={() => setIsRethinkModalOpen(true)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      marginRight: '10px'
+                    }}
+                    disabled={selectedFile.loading}
+                  >
+                    AI rethink
+                  </button>
+
+                  {/* ★★★ 新增的「產生配置檔」按鈕 ★★★ */}
+                  <button
+                    onClick={handleGenerateConfigs}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                    disabled={selectedFile.loading}
+                  >
+                    產生配置檔
+                  </button>
+                </div>
               </div>
               <CodeDiff
                 fileName={selectedFile?.fileName || ""}
@@ -730,8 +748,6 @@ const App: React.FC = () => {
                   setSelectedFile((prevFile) =>
                     prevFile ? { ...prevFile, newCode: updatedCode } : null
                   );
-              
-                  // **確保同步更新 files 陣列**
                   setFiles((prevFiles) =>
                     prevFiles.map((file) =>
                       file.fileName === selectedFile?.fileName
@@ -745,7 +761,6 @@ const App: React.FC = () => {
           ) : (
             <p className="placeholder-text">請上傳專案並選擇修改過的檔案來查看變更</p>
           )}
-          
         </main>
 
         <PromptModal isOpen={isPromptModalOpen} onClose={() => setIsPromptModalOpen(false)} onConfirm={handleConfirmPrompt} />
@@ -753,7 +768,7 @@ const App: React.FC = () => {
         <aside className="advice-panel">
           <h3>後端建議</h3>
           {selectedFile?.advice ? (
-            <ReactMarkdown>{selectedFile.advice}</ReactMarkdown> // ✅ 以 Markdown 顯示
+            <ReactMarkdown>{selectedFile.advice}</ReactMarkdown>
           ) : (
             <p>尚無建議</p>
           )}
@@ -774,19 +789,37 @@ const App: React.FC = () => {
             {isTesting ? '測試中...' : '測試專案'}
           </button>
 
-          {/* 測試結果 */}
-          {testResult && (
-            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f8f9fa', border: '1px solid #ddd', borderRadius: '5px' }}>
-              <strong>測試結果:</strong>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{testResult}</pre>
+          {/* 顯示進度訊息 */}
+          <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f8f9fa', border: '1px solid #ddd', borderRadius: '5px' }}>
+          <>
+            <strong>測試進度:</strong>
+            <ul>
+              {testProgress.map((msg, index) => (
+                <li key={index}>{msg}</li>
+              ))}
+            </ul>
+          </>
+          </div>
+
+          {/* 如果有檔案的 log，可用紙張圖示顯示 */}
+          {Object.keys(fileLogs).map((fileName) => (
+            <div key={fileName} style={{ marginBottom: '5px' }}>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openLogModal(fileName);
+                }}
+                style={{ textDecoration: 'none', color: '#007bff' }}
+              >
+                <span role="img" aria-label="log">📄</span> {fileName}
+              </a>
             </div>
-          )}
+          ))}
         </aside>
       </div>
-  
     </div>
   );
-  
 };
 
 export default App;
