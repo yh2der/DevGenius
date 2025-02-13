@@ -8,14 +8,11 @@ services:
     ports:
       - "80:80"
     depends_on:
-      orchestrator:
-        condition: service_healthy
-      web-frontend:
-        condition: service_healthy
+      - orchestrator
+      - web-frontend
     networks:
       - my-net
     restart: unless-stopped
-
 
   orchestrator:
     build:
@@ -42,11 +39,10 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./web-frontend:/app  # React 讀取即時程式碼
-      - /app/node_modules  # 避免 node_modules 影響
     environment:
       - CHOKIDAR_USEPOLLING=true  # 讓 React/Vite 監聽變更
     expose:
-      - "5173:5173"
+      - "5173"
     networks:
       - my-net
     restart: unless-stopped
