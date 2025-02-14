@@ -4,6 +4,7 @@ from typing import  List
 
 
 class CodeUnitTestRequest(BaseModel):
+    file_name: str
     code: str  # 需要產生測試的程式碼
 
 # 新增統一入口用的 Request 模型，只需傳入一個自然語言的 prompt

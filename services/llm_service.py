@@ -105,7 +105,7 @@ def fix_error(language: str, code: str, error_message: str, model: str = DEFAULT
 
 
 
-def generate_unit_test(code: str, model: str = DEFAULT_MODEL) -> str:
+def generate_unit_test(filename: str,code: str, model: str = DEFAULT_MODEL) -> str:
     """
     根據程式碼自動產生對應的單元測試
     """
@@ -115,11 +115,11 @@ def generate_unit_test(code: str, model: str = DEFAULT_MODEL) -> str:
     {code}
     ```
 
-    ✅ 要求：
+        ✅ 要求：
     - 測試程式碼 **必須包含原始類別**，確保可以直接執行
-    - 使用標準 測試框架（Python 使用 `unittest`，Java 使用 `JUnit`）
+    - 使用標準 測試框架（Python 使用 `unittest`，Java 不使用 `JUnit`）
     - 覆蓋各種可能的測試情境
-    - 只輸出測試程式碼，不要其他解釋
+    - 只輸出測試程式碼，不要其他解釋，我會把原本的程式碼放在同一個資料夾下面，你產生的unit test檔案去側他，如果是java檔案名稱要是(func or calss)Test。
     """
     system_message = f"你是一個專業的單元測試專家，請產生完整可執行的測試代碼。"
 
@@ -144,7 +144,9 @@ def generate_deployment_files(filename: str,code: str, model: str = DEFAULT_MODE
     prompt = f"""{HIGH_QUALITY_PROMPT}
 
 請根據以下程式碼自動判斷所使用的程式語言與版本，並生成一份完整的 Dockerfile 與 Kubernetes YAML 配置文件，用於在 GKE 上部署該應用。要求如下：
-- **第一部分**：生成的 Dockerfile 必須能構建並運行該應用。請根據程式碼內容選擇合適的基礎映像、拷貝程式碼、以及設定正確的啟動指令，請**不要**有任何安裝指令如pip install，確保執行的文件有放在執行的工作目錄底下，然後執行命令請你直接執行 {filename}，如果是unit測試一樣是執行{filename}而非unitest 模組。
+- **第一部分**：生成的 Dockerfile 必須能構建並運行該應用。請根據程式碼內容選擇合適的基礎映像若是java檔請具備編譯功能且使用確定現有穩定版本、拷貝程式碼、以及設定正確的啟動指令，請**不要**有任何安裝指令如pip install在執行，
+確保執行的文件有放在執行的工作目錄底下，請你直接執行 {filename}。
+如果是java檔案，記得編譯在執行，請執行java  {filename}注意-和_須維持相同狀態。
 - **第二部分**：生成的 Kubernetes YAML 文件，其中**kind必須為job**，部署後我們將從日誌中讀取應用執行結果。請確保生成的 YAML 文件可直接用於 GKE 部署。
 這是一個sample.yaml
 **apiVersion: batch/v1
@@ -166,7 +168,7 @@ spec:
 以下是程式碼：
 {code}
 """
-
+    print(prompt)
     system_message = ("你是一個專業的部署工具，請根據用戶提供的程式碼自動判斷語言與版本，並生成適合於 GKE 部署的 Dockerfile "
                       "以及 Kubernetes YAML 配置文件，除此之外不要回傳任何資訊。")
     
@@ -177,7 +179,7 @@ spec:
             {"role": "user", "content": prompt}
         ]
     )
-    
+    print(response)
     full_text = response.choices[0].message.content.strip()
 
     # 使用正則表達式擷取第一個 code block（假定為 Dockerfile）

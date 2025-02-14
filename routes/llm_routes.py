@@ -34,7 +34,7 @@ async def generate_unit_test_api(request: CodeUnitTestRequest):
     產生 Python 或 Java 程式碼的單元測試
     """
     try:
-        result = generate_unit_test(request.code)
+        result = generate_unit_test(request.file_name, request.code)
 
         return JSONResponse(
             content={"unit_test": result, "message": "單元測試生成成功"},
