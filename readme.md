@@ -5,6 +5,7 @@
 - **程式碼修正**（根據prompt修正程式碼，並回傳建議）
 - **單元測試產生**
 - **部署文件產生**(dockerfile，yaml)
+- **多檔案案程式碼修正**(可一次性傳入多個關聯檔案，使llm同時修改多個文件，分別給出建議)
 
 每個功能的 prompt 前均會附上如下指示：
 > 請使用你單一答案的算力上限和 token 上限，think hardest, use the most time and most compute to think deepest。  
