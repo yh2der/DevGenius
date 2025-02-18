@@ -75,35 +75,6 @@ def unified_service(user_prompt: str, model: str = DEFAULT_MODEL) -> dict:
     )
     
     return clean_code_add_suggest(response)        
-def fix_error(language: str, code: str, error_message: str, model: str = DEFAULT_MODEL) -> str:
-    # print("error_message", error_message)
-    """
-    修正程式碼中的編譯錯誤。
-    """
-    prompt = f"""{HIGH_QUALITY_PROMPT}\n\n你是一個專業的 {language} 除錯專家，請根據以下資訊修正編譯錯誤：
-
-    - 語言：{language}
-    - 原始程式碼：
-    {code}
-    - 錯誤訊息：{error_message}
-
-    **要求：**
-    - **第一部分**：請先提供**修正後的程式碼**，只輸出程式碼內容，不要任何額外說明。
-    - **第二部分**：請提供 **修正後的建議**，說明此版本的主要變更點，例如語法變更、最佳實踐、效能改進等。"""
-    system_message = f"你是一個專業的 {language} 編譯錯誤修正工具，請根據錯誤訊息修正程式碼。"
-    
-    response = client.chat.completions.create(
-        model=model,  
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    # print(response)
-    return clean_code_add_suggest(response)
-
-
-
 
 def generate_unit_test(filename: str,code: str, model: str = DEFAULT_MODEL) -> str:
     """
@@ -143,32 +114,32 @@ def generate_deployment_files(filename: str,code: str, model: str = DEFAULT_MODE
     """
     prompt = f"""{HIGH_QUALITY_PROMPT}
 
-請根據以下程式碼自動判斷所使用的程式語言與版本，並生成一份完整的 Dockerfile 與 Kubernetes YAML 配置文件，用於在 GKE 上部署該應用。要求如下：
-- **第一部分**：生成的 Dockerfile 必須能構建並運行該應用。請根據程式碼內容選擇合適的基礎映像若是java檔請具備編譯功能且使用確定現有穩定版本、拷貝程式碼、以及設定正確的啟動指令，請**不要**有任何安裝指令如pip install在執行，
-確保執行的文件有放在執行的工作目錄底下，請你直接執行 {filename}。
-如果是java檔案，記得編譯在執行，請執行java  {filename}注意-和_須維持相同狀態。
-- **第二部分**：生成的 Kubernetes YAML 文件，其中**kind必須為job**，部署後我們將從日誌中讀取應用執行結果。請確保生成的 YAML 文件可直接用於 GKE 部署。
-這是一個sample.yaml
-**apiVersion: batch/v1
-kind: Job
-metadata:
-  name: <job-name>
-spec:
-  template:
+    請根據以下程式碼自動判斷所使用的程式語言與版本，並生成一份完整的 Dockerfile 與 Kubernetes YAML 配置文件，用於在 GKE 上部署該應用。要求如下：
+    - **第一部分**：生成的 Dockerfile 必須能構建並運行該應用。請根據程式碼內容選擇合適的基礎映像若是java檔請具備編譯功能且使用確定現有穩定版本、拷貝程式碼、以及設定正確的啟動指令，請**不要**有任何安裝指令如pip install在執行，
+    確保執行的文件有放在執行的工作目錄底下，請你直接執行 {filename}。
+    如果是java檔案，記得編譯在執行，請執行java  {filename}注意-和_須維持相同狀態。
+    - **第二部分**：生成的 Kubernetes YAML 文件，其中**kind必須為job**，部署後我們將從日誌中讀取應用執行結果。請確保生成的 YAML 文件可直接用於 GKE 部署。
+    這是一個sample.yaml
+    **apiVersion: batch/v1
+    kind: Job
     metadata:
-      name: <job-name>
+    name: <job-name>
     spec:
-      containers:
-      - name: <container-name>
-        image: <image-name>
-      restartPolicy: Never
-  backoffLimit: 4
-  **
-請僅輸出純文本格式的 Dockerfile 與 YAML 配置文件，並使用 Markdown code block 分別標示（第一個為 Dockerfile 裡面不用有安裝任何套件的指令，第二個為 YAML，其中生成的image項目前綴必須是us-central1-docker.pkg.dev/tsmccareerhack2025-tsid-grp4/tsmccareerhack2025-tsid-grp4-repository/）。
-以下是程式碼：
-{code}
-"""
-    print(prompt)
+    template:
+        metadata:
+        name: <job-name>
+        spec:
+        containers:
+        - name: <container-name>
+            image: <image-name>
+        restartPolicy: Never
+    backoffLimit: 4
+    **
+    請僅輸出純文本格式的 Dockerfile 與 YAML 配置文件，並使用 Markdown code block 分別標示（第一個為 Dockerfile 裡面不用有安裝任何套件的指令，第二個為 YAML，其中生成的image項目前綴必須是us-central1-docker.pkg.dev/tsmccareerhack2025-tsid-grp4/tsmccareerhack2025-tsid-grp4-repository/）。
+    以下是程式碼：
+    {code}
+    """
+    # print(prompt)
     system_message = ("你是一個專業的部署工具，請根據用戶提供的程式碼自動判斷語言與版本，並生成適合於 GKE 部署的 Dockerfile "
                       "以及 Kubernetes YAML 配置文件，除此之外不要回傳任何資訊。")
     
@@ -179,7 +150,7 @@ spec:
             {"role": "user", "content": prompt}
         ]
     )
-    print(response)
+    # print(response)
     full_text = response.choices[0].message.content.strip()
 
     # 使用正則表達式擷取第一個 code block（假定為 Dockerfile）

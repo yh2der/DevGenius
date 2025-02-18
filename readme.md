@@ -2,11 +2,9 @@
 
 這是一個基於 FastAPI 的程式碼轉換 API 專案，整合了 OpenAI API 用於處理以下任務：
 
-- **版本轉換**（例如：將 Java 8 代碼轉換成 Java 21）
-- **語言轉換**（例如：從 Python 轉為 Java 或反之）
-- **程式碼效能優化**
-- **編譯錯誤修正**
-- **運行錯誤修正**
+- **程式碼修正**（根據prompt修正程式碼，並回傳建議）
+- **單元測試產生**
+- **部署文件產生**(dockerfile，yaml)
 
 每個功能的 prompt 前均會附上如下指示：
 > 請使用你單一答案的算力上限和 token 上限，think hardest, use the most time and most compute to think deepest。  
