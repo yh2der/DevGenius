@@ -1,0 +1,279 @@
+/* 移除 #root 的 text-align:center，或改為 left */
+
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* 若希望頁面內容靠左顯示，可調整 body 的設定（或移除 flex 屬性） */
+body, #root {
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f9;
+  /* 取消以下容易造成捲動問題的設定
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  */
+  width: 100%;
+  min-height: 100vh; /* 讓頁面至少撐滿視窗高度 */
+}
+
+
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  background-color: #007bff; /* 可依需求調整背景色 */
+  color: white;
+  text-align: center;
+  padding: 15px 10px;
+}
+
+.main-wrapper {
+  display: flex;
+  width: 99vw; 
+  max-width: 3000px;
+  /* 移除 height: 100vh，改用 min-height 讓內容能撐開 */
+  min-height: 100vh;
+  justify-content: center; 
+  align-items: flex-start; /* 避免全部被垂直置中 */
+  background-color: #eaeaea;
+  flex-wrap: nowrap;
+  overflow-x: hidden; /* 如果想要橫向不要捲動，可保留；否則可以改為 auto */
+  padding: 20px;
+  gap: 30px;
+  margin: 0 auto; 
+  /* 讓出固定標題的高度，避免被標題擋住 */
+  padding-top: 120px; /* 或者直接用 margin-top: 120px; 也可以 */
+}
+
+
+.footer {
+  background-color: #007bff; /* 可依需求調整背景色 */
+  color: white;
+  text-align: center;
+  padding: 10px;
+}
+
+.title-container {
+  position: fixed;     /* 固定在視窗 */
+  top: 0;              /* 靠上 */
+  left: 0;             /* 從左側開始 */
+  right: 0;            /* 撐到右側，等同於 width: 100% */
+  background: #fff;    /* 白色背景 */
+  text-align: center;  /* 文字置中 */
+  padding: 15px 0;     /* 上下留白 */
+  z-index: 9999;       /* 讓它浮在最上層 */
+}
+
+.title-container h2 {
+  margin: 0;           /* 清除預設 margin，避免額外空白 */
+}
+
+.app-container {
+  display: flex;
+  margin-top: 80px;
+  flex-grow: 1;
+  /* 原本是 height: 90vh; 建議改為 min-height 或 auto */
+  min-height: 1100px; /* 依需求自行調整 */
+  max-width: 2400px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 10px;
+  overflow: auto; /* 容器若內容過多，允許捲動 */
+  text-align: left;
+  margin-top: 0; /* 原本是 100px; 如果頂部固定，就改用 .main-wrapper 的 padding-top 來騰空 */
+}
+
+.sidebar {
+  width: 500px;
+  min-width: 350px;
+  background: #f0f0f0;
+  padding: 15px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background: white;
+  overflow-y: auto;
+  text-align: left;  /* 主要內容區文字置左 */
+  transition: background 0.3s, color 0.3s;
+}
+
+.main-content.expanded {
+  flex: 3;
+}
+
+/* 調整建議區塊寬度，讓它顯示更大 */
+.advice-panel {
+  width: 350px;       /* 從 250px 調整到 350px */
+  min-width: 300px;   /* 相應調整最小寬度 */
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ddd;
+}
+
+.advice-panel.compact {
+  width: 200px;
+}
+
+.placeholder-text {
+  color: #888;
+  font-size: 16px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.upload-button {
+  display: block;
+  margin: 10px auto;
+  padding: 8px 16px; /* 增加左右內邊距 */
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto; /* 讓按鈕寬度自適應內容 */
+  max-width: 200px; /* 限制最大寬度 */
+  text-align: center; /* 確保文字置中 */
+}
+
+.upload-button:hover {
+  background-color: #0056b3;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  text-align: center;
+}
+
+.prompt-input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.button-group {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:first-child {
+  background: #28a745;
+  color: white;
+}
+
+button:last-child {
+  background: #dc3545;
+  color: white;
+}
+
+
+/* 跑道樣式 */
+/* 直線跑道容器 */
+.straight-track {
+  position: relative;
+  width: 400px;           /* 跑道寬度 */
+  height: 50px;           /* 跑道高度 */
+  background: #f0f0f0;     /* 跑道背景色 */
+  border: 2px solid #ccc; /* 跑道邊框 */
+  border-radius: 25px;    /* 跑道圓角，讓跑道看起來比較圓滑 */
+  margin: 0 auto;         /* 置中 */
+  overflow: hidden;
+}
+
+/* 賽車的樣式 */
+.race-car {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%); /* 使賽車中心對齊 */
+  transition: left 0.5s ease;         /* 平滑移動效果 */
+  font-size: 2rem;                    /* 調整賽車圖示大小 */
+}
+
+/* 進度文字樣式 */
+.progress-info {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
