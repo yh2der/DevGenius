@@ -1,0 +1,45 @@
+# 忽略環境設定檔
+.env
+.env.local
+*.secrets
+
+# 忽略 Python 編譯後的檔案
+__pycache__/
+*.py[cod]
+*.so
+
+# 忽略虛擬環境（視你的環境管理工具）
+k8s_api_env/
+.env/
+Pipfile
+Pipfile.lock
+poetry.lock
+tips
+testcommand.txt
+
+# 忽略 IDE 和編輯器設定
+.vscode/
+.idea/
+*.iml
+
+# 忽略 macOS / Windows 系統產生的無用檔案
+.DS_Store
+Thumbs.db
+
+# 忽略日誌檔案
+*.log
+logs/
+*.out
+
+# FastAPI 相關
+fastapi_cache/
+static/*.cache
+static/*.tmp
+static/uploads/
+
+# Uvicorn / Gunicorn 產生的 PID 檔案
+*.pid
+
+# Docker 相關（如果未來使用）
+docker-compose.override.yml
+.dockerignore
