@@ -1,0 +1,23 @@
+kubectl delete service --all
+gcloud container clusters resize careerhack-cluster-tsid \
+    --zone us-central1-a \
+    --node-pool default-pool \
+    --num-nodes 1
+# 把檔案放到目標資料夾，ctk8s_test_testcodeongke:v5記得改
+sudo docker build -t ctk8s_test_testcodeongke:v5 .
+kubectl get services
+sudo docker tag ctk8s_test_testcodeongke:v5 us-central1-docker.pkg.dev/tsmccareerhack2025-tsid-grp4/tsmccareerhack2025-tsid-grp4-repository/ctk8s_test_testcodeongke:v5
+sudo docker push us-central1-docker.pkg.dev/tsmccareerhack2025-tsid-grp4/tsmccareerhack2025-tsid-grp4-repository/ctk8s_test_testcodeongke:v5
+vim deployment.yaml
+kubectl apply -f ./deployment.yaml
+# 檢查 service 狀態，看IP位置
+kubectl get services
+
+
+#關服務
+kubectl delete service --all
+gcloud container clusters resize careerhack-cluster-tsid \
+    --zone us-central1-a \
+    --node-pool default-pool \
+    --num-nodes 0
+#然後關機

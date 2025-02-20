@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runcodeongkepost-deployment
+  labels:
+    app: runcodeongkepost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: runcodeongkepost
+  template:
+    metadata:
+      labels:
+        app: runcodeongkepost
+    spec:
+      containers:
+      - name: runcodeongkepost
+        image: us-central1-docker.pkg.dev/tsmccareerhack2025-tsid-grp4/tsmccareerhack2025-tsid-grp4-repository/runcodeongkepost:v1
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1024Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        # 掛載宿主機的 Docker Socket
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        # 啟用特權模式，以確保容器具備操作 Docker daemon 所需權限
+        securityContext:
+          privileged: true
+      # 定義掛載點，指定從宿主機掛載 /var/run/docker.sock
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: runcodeongkepost-service
+spec:
+  selector:
+    app: runcodeongkepost
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: LoadBalancer

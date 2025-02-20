@@ -1,0 +1,8 @@
+streamlit
+google-cloud-aiplatform
+kubernetes
+pyyaml
+openai
+black
+fastapi
+uvicorn
