@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - orchestrator
+      - web-frontend
+    networks:
+      - my-net
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    volumes:
+      - ./orchestrator:/app  # Flask 讀取即時程式碼
+    environment:
+      - FLASK_ENV=development
+    expose:
+      - "5000"
+    networks:
+      - my-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+
+  web-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./web-frontend:/app  # React 讀取即時程式碼
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # 讓 React/Vite 監聽變更
+    expose:
+      - "5173"
+    networks:
+      - my-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  my-net:
+    driver: bridge
